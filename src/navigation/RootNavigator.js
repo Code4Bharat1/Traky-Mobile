@@ -7,6 +7,7 @@ import AuthNavigator from './AuthNavigator';
 import AdminNavigator from './AdminNavigator';
 import DeptHeadNavigator from './DeptHeadNavigator';
 import EmployeeNavigator from './EmployeeNavigator';
+import LeadNavigator from './LeadNavigator';
 
 const Stack = createNativeStackNavigator();
 
@@ -33,6 +34,8 @@ export default function RootNavigator() {
         <Stack.Screen name="AdminRoot" component={AdminNavigator} />
       ) : role === 'department_head' || role === 'dept_head' ? (
         <Stack.Screen name="DeptHeadRoot" component={DeptHeadNavigator} />
+      ) : role === 'lead' ? (
+        <Stack.Screen name="LeadRoot" component={LeadNavigator} />
       ) : (
         <Stack.Screen name="EmployeeRoot" component={EmployeeNavigator} />
       )}

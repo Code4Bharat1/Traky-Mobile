@@ -1,8 +1,27 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
-// 192.168.11.117 is your physical machine's local Wi-Fi IP address
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.11.117:5000/api/v1';
+/**
+ * URL resolution strategy:
+ *  - EXPO_PUBLIC_API_URL env var always wins (set this for physical devices)
+ *  - Web (browser)       → localhost  (browser runs on same machine as backend)
+ *  - Android emulator    → 10.0.2.2   (AVD's alias for the host machine)
+ *  - iOS simulator       → localhost  (shares host network)
+ *  - Physical device     → set EXPO_PUBLIC_API_URL to your LAN IP e.g.
+ *                          http://192.168.11.117:5000/api/v1
+ */
+function resolveBaseUrl() {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:5000/api/v1';
+  }
+  return 'http://localhost:5000/api/v1';
+}
+
+const BASE_URL = resolveBaseUrl();
 
 const client = axios.create({
   baseURL: BASE_URL,

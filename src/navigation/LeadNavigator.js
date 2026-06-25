@@ -3,27 +3,28 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { createDrawerNavigator, DrawerContentScrollView } from '@react-navigation/drawer';
 import {
   LayoutDashboard,
-  FolderKanban,
-  ListTodo,
-  Bug,
-  Users,
-  Users2,
+  Clock,
   Umbrella,
-  CreditCard,
-  BarChart3,
-  BookCheck,
-  BookOpen,
+  Users,
+  CheckSquare,
+  ClipboardList,
   FileText,
+  BarChart2,
+  BookOpen,
+  Bug,
+  Trophy,
   Bell,
   LogOut,
-  Menu,
+  FolderOpen,
+  FileStack,
+  UserCheck,
 } from 'lucide-react-native';
 import useAuthStore from '../store/authStore';
 
 // ── Screens ────────────────────────────────────────────────────────────────────
-import DeptHeadDashboard from '../screens/DeptHead/DeptHeadDashboard';
+import LeadDashboard from '../screens/Lead/LeadDashboard';
 
-// Placeholder for screens not yet built
+// Placeholder screen factory for screens not yet built
 function PlaceholderScreen({ route }) {
   return (
     <View style={styles.placeholder}>
@@ -35,33 +36,36 @@ function PlaceholderScreen({ route }) {
 
 const Drawer = createDrawerNavigator();
 
-// ── Sidebar items — mirrors web dept-head layout.js NAV_ITEMS exactly ─────────
+// ── Sidebar menu items ─────────────────────────────────────────────────────────
 const NAV_ITEMS = [
-  { name: 'Dashboard',       label: 'DASHBOARD',        Icon: LayoutDashboard, component: DeptHeadDashboard },
-  { name: 'Projects',        label: 'PROJECTS',          Icon: FolderKanban,    component: PlaceholderScreen },
-  { name: 'Tasks',           label: 'TASKS',             Icon: ListTodo,        component: PlaceholderScreen },
-  { name: 'Issues',          label: 'ISSUES',            Icon: Bug,             component: PlaceholderScreen },
-  { name: 'Employee',        label: 'EMPLOYEE',          Icon: Users,           component: PlaceholderScreen },
-  { name: 'TeamAttendance',  label: 'TEAM ATTENDANCE',   Icon: Users2,          component: PlaceholderScreen },
-  { name: 'LeaveApprovals',  label: 'LEAVE APPROVALS',   Icon: Umbrella,        component: PlaceholderScreen },
-  { name: 'Expenses',        label: 'EXPENSES',          Icon: CreditCard,      component: PlaceholderScreen },
-  { name: 'Leaderboard',     label: 'LEADERBOARD',       Icon: BarChart3,       component: PlaceholderScreen },
-  { name: 'DailyLogs',       label: 'DAILY LOGS',        Icon: BookCheck,       component: PlaceholderScreen },
-  { name: 'KTDocuments',     label: 'KT DOCUMENTS',      Icon: BookOpen,        component: PlaceholderScreen },
+  { name: 'Dashboard',       label: 'DASHBOARD',        Icon: LayoutDashboard, component: LeadDashboard },
+  { name: 'Attendance',      label: 'ATTENDANCE',        Icon: Clock,           component: PlaceholderScreen },
+  { name: 'MyLeaves',        label: 'MY LEAVES',         Icon: Umbrella,        component: PlaceholderScreen },
+  { name: 'TeamAttendance',  label: 'TEAM ATTENDANCE',   Icon: Users,           component: PlaceholderScreen },
+  { name: 'LeaveApprovals',  label: 'LEAVE APPROVALS',   Icon: UserCheck,       component: PlaceholderScreen },
+  { name: 'Expenses',        label: 'EXPENSES',          Icon: CheckSquare,     component: PlaceholderScreen },
+  { name: 'Projects',        label: 'PROJECTS',          Icon: FolderOpen,      component: PlaceholderScreen },
+  { name: 'Tasks',           label: 'TASKS',             Icon: ClipboardList,   component: PlaceholderScreen },
+  { name: 'Templates',       label: 'TEMPLATES',         Icon: FileStack,       component: PlaceholderScreen },
   { name: 'Reports',         label: 'REPORTS',           Icon: FileText,        component: PlaceholderScreen },
-  { name: 'EmployeeReport',  label: 'EMPLOYEE REPORT',   Icon: BarChart3,       component: PlaceholderScreen },
+  { name: 'EmployeeReport',  label: 'EMPLOYEE REPORT',   Icon: BarChart2,       component: PlaceholderScreen },
+  { name: 'DailyLogs',       label: 'DAILY LOGS',        Icon: BookOpen,        component: PlaceholderScreen },
+  { name: 'Issues',          label: 'ISSUES',            Icon: Bug,             component: PlaceholderScreen },
+  { name: 'KTDocuments',     label: 'KT DOCUMENTS',      Icon: FileText,        component: PlaceholderScreen },
+  { name: 'Leaderboard',     label: 'LEADERBOARD',       Icon: Trophy,          component: PlaceholderScreen },
   { name: 'Notifications',   label: 'NOTIFICATIONS',     Icon: Bell,            component: PlaceholderScreen },
 ];
 
 // ── Custom Drawer Content ──────────────────────────────────────────────────────
-function DeptHeadDrawerContent(props) {
+function LeadDrawerContent(props) {
   const { navigation, state } = props;
   const { logout, user } = useAuthStore();
   const activeIndex = state.index;
 
+  // Get initials for avatar
   const initials = user?.name
     ? user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
-    : 'DH';
+    : 'U';
 
   return (
     <View style={styles.drawerContainer}>
@@ -113,10 +117,10 @@ function DeptHeadDrawerContent(props) {
 }
 
 // ── Navigator ─────────────────────────────────────────────────────────────────
-export default function DeptHeadNavigator() {
+export default function LeadNavigator() {
   return (
     <Drawer.Navigator
-      drawerContent={(props) => <DeptHeadDrawerContent {...props} />}
+      drawerContent={(props) => <LeadDrawerContent {...props} />}
       screenOptions={{
         headerStyle: { backgroundColor: '#ffffff' },
         headerTintColor: '#0f172a',
