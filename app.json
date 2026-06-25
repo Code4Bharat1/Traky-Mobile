@@ -3,6 +3,7 @@
     "name": "Task-Tracker-Mobile-VB",
     "slug": "Task-Tracker-Mobile-VB",
     "version": "1.0.0",
+    "sdkVersion": "54.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
