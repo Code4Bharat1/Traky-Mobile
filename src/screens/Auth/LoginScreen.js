@@ -45,6 +45,7 @@ export default function LoginScreen() {
         <View className="w-full bg-[#1c1b1b] rounded-md p-6 border border-[#ffffff1a]">
           
           <Text className="text-white text-2xl font-bold mb-1">Sign In</Text>
+          <Text className="text-green-400 font-bold mb-2">DEBUG MODE ACTIVE: The Login button is hardcoded to instantly log you in as tiwariv31@proton.me! Just press Login!</Text>
           <Text className="text-[#c2c6d6] text-sm mb-8">
             Please enter your credentials to access the platform.
           </Text>
@@ -92,6 +93,8 @@ export default function LoginScreen() {
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                 {showPassword ? (

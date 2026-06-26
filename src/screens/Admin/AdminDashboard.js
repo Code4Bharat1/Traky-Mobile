@@ -1,62 +1,313 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, RefreshControl } from 'react-native';
 import client from '../../api/client';
-import { Users, Activity } from 'lucide-react-native';
+import { FolderKanban, ArrowRight, Building2, Trophy, Bug, CheckCircle2, ClipboardList, Shield, AlertCircle, Circle, Clock, Users, CreditCard } from 'lucide-react-native';
+import useAuthStore from '../../store/authStore';
 
-export default function AdminDashboard() {
-  const [stats, setStats] = useState(null);
+const STATUS_META = {
+  IN_PROGRESS: { label: "In Progress", color: "text-[#47c8ff]", bg: "bg-[#47c8ff1a]", border: "border-[#47c8ff33]" },
+  COMPLETED: { label: "Completed", color: "text-[#47ff8a]", bg: "bg-[#47ff8a1a]", border: "border-[#47ff8a33]" }
+};
+
+const MEDALS = [
+  { label: "1st", color: "text-[#e8a847]", bg: "bg-[#e8a8471a]", border: "border-[#e8a8474d]" },
+  { label: "2nd", color: "text-[#888]", bg: "bg-[#8888881a]", border: "border-[#88888833]" },
+  { label: "3rd", color: "text-[#c47a3a]", bg: "bg-[#c47a3a1a]", border: "border-[#c47a3a4d]" }
+];
+
+const StatusBadge = ({ status }) => {
+  const m = STATUS_META[status] || STATUS_META.IN_PROGRESS;
+  return (
+    <View className={`flex-row items-center px-2 py-0.5 border rounded ${m.bg} ${m.border}`}>
+      <Circle size={6} color={m.color.replace('text-[', '').replace(']', '')} fill={m.color.replace('text-[', '').replace(']', '')} style={{marginRight: 4}} />
+      <Text className={`text-[10px] uppercase font-bold tracking-widest ${m.color}`}>{m.label}</Text>
+    </View>
+  );
+};
+
+const extractArray = (res, ...keys) => {
+  if (res.status !== "fulfilled") return [];
+  const d = res.value?.data;
+  if (!d) return [];
+  if (Array.isArray(d)) return d;
+  for (const key of keys) {
+    if (Array.isArray(d[key])) return d[key];
+  }
+  if (Array.isArray(d.data)) return d.data;
+  if (Array.isArray(d.records)) return d.records;
+  return [];
+};
+
+export default function AdminDashboard({ navigation }) {
+  const { user } = useAuthStore();
+  const [data, setData] = useState({
+    projects: [], depts: [], bugs: [], tasks: [], logs: [], leaderboard: [], approvedExpenses: []
+  });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [pR, dR, bR, tR, lR, lbR, exR] = await Promise.allSettled([
+        client.get('/projects?limit=100'),
+        client.get('/departments'),
+        client.get('/bugs?limit=100'),
+        client.get('/tasks?limit=100'),
+        client.get('/activity-logs?limit=50'),
+        client.get('/users/leaderboard?period=all'),
+        client.get('/expenses?status=approved&limit=100')
+      ]);
+
+      setData({
+        projects: extractArray(pR, 'projects'),
+        depts: extractArray(dR, 'allDepartments', 'departments'),
+        bugs: extractArray(bR, 'bugs'),
+        tasks: extractArray(tR, 'tasks'),
+        logs: extractArray(lR, 'activityLogs', 'logs'),
+        leaderboard: extractArray(lbR, 'topOverall', 'leaderboard'),
+        approvedExpenses: extractArray(exR, 'records', 'expenses')
+      });
+    } catch (e) {
+      setError("Could not load dashboard data.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // We fetch users and activity logs just to derive some basic stats since there is no admin/stats endpoint
-    const fetchBasicStats = async () => {
-      try {
-        const [usersRes, logsRes] = await Promise.all([
-          client.get('/users?limit=1'),
-          client.get('/activity-logs?limit=1')
-        ]);
-        setStats({
-          totalUsers: usersRes.data.totalCount || usersRes.data.data?.length || 0,
-          totalLogs: logsRes.data.totalCount || logsRes.data.data?.length || 0
-        });
-      } catch (error) {
-        console.error("Failed to load admin stats", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchBasicStats();
+    loadData();
   }, []);
 
-  if (loading) {
+  const activeProjects = data.projects.filter((p) => p.status !== "COMPLETED");
+  const openBugs = data.bugs.filter((b) => ["OPEN", "REOPENED"].includes(b.status));
+  const openTasks = data.tasks.filter((t) => t.status !== "DONE");
+  
+  const today = new Date();
+  const todayLogs = data.logs.filter((l) => {
+    const d = l.logDate ? new Date(l.logDate) : l.date ? new Date(l.date) : null;
+    if (!d) return false;
+    return d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
+  });
+
+  const totalExpense = data.approvedExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0).toFixed(0);
+
+  const stats = [
+    { icon: Users, label: "Departments", value: data.depts.length, color: "#47ff8a" },
+    { icon: FolderKanban, label: "Active Projects", value: activeProjects.length, color: "#c847ff" },
+    { icon: ClipboardList, label: "Open Tasks", value: openTasks.length, color: "#47c8ff" },
+    { icon: Clock, label: "Logs Today", value: todayLogs.length, color: "#e8a847" },
+    { icon: Bug, label: "Issues", value: openBugs.length, color: "#ff4747" },
+    { icon: CreditCard, label: "Approved Expenses", value: `₹${totalExpense}`, color: "#47ff8a" }
+  ];
+
+  if (loading && !data.projects.length) {
     return (
-      <View className="flex-1 items-center justify-center bg-[#131313]">
-        <ActivityIndicator size="large" color="#adc6ff" />
+      <View className="flex-1 bg-[#131313] justify-center items-center">
+         <ActivityIndicator size="large" color="#adc6ff" />
       </View>
     );
   }
 
-  return (
-    <ScrollView className="flex-1 bg-[#131313] p-4">
-      <Text className="text-white text-2xl font-bold mb-6 mt-4 tracking-wider">SYSTEM DASHBOARD</Text>
-      
-      <View className="flex-row justify-between mb-4">
-        {/* Total Users Card */}
-        <View className="flex-1 bg-[#1c1b1b] rounded-lg p-5 border border-[#ffffff1a] mr-2">
-          <Users size={24} color="#adc6ff" className="mb-2" />
-          <Text className="text-[#c2c6d6] text-xs font-bold uppercase tracking-widest mb-1">Total Users</Text>
-          <Text className="text-white text-3xl font-bold">{stats?.totalUsers || 0}</Text>
-        </View>
+  const navigateTo = (screen) => {
+    if (navigation) navigation.navigate(screen);
+  };
 
-        {/* Activity Logs Card */}
-        <View className="flex-1 bg-[#1c1b1b] rounded-lg p-5 border border-[#ffffff1a] ml-2">
-          <Activity size={24} color="#adc6ff" className="mb-2" />
-          <Text className="text-[#c2c6d6] text-xs font-bold uppercase tracking-widest mb-1">Recent Logs</Text>
-          <Text className="text-white text-3xl font-bold">{stats?.totalLogs || 0}</Text>
+  return (
+    <ScrollView 
+      className="flex-1 bg-[#131313] p-4" 
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={loading} onRefresh={loadData} tintColor="#adc6ff" />}
+    >
+      {/* Header */}
+      <View className="mb-6 mt-2 flex-row justify-between items-center">
+         <View>
+            <Text className="text-[#888] text-[10px] tracking-widest uppercase mb-1 font-bold">Admin</Text>
+            <Text className="text-white text-xl font-bold">Welcome back, <Text className="text-[#adc6ff]">{user?.name || 'User'}</Text></Text>
+         </View>
+         <View className="border border-[#ffffff1a] bg-[#1c1b1b] px-3 py-2 flex-row items-center rounded">
+            <Shield size={14} color="#adc6ff" className="mr-2" />
+            <Text className="text-[#888] text-[10px] tracking-widest uppercase font-bold">Administrator</Text>
+         </View>
+      </View>
+
+      {error && (
+        <View className="bg-[#ff47471a] border border-[#ff47474d] rounded p-3 mb-4 flex-row items-center">
+          <AlertCircle size={16} color="#ff4747" className="mr-2" />
+          <Text className="text-[#ff4747] text-xs">{error}</Text>
+        </View>
+      )}
+
+      {/* Horizontal Stats Cards */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6">
+        {stats.map((s, i) => (
+          <View key={s.label} className={`border border-[#ffffff1a] bg-[#1c1b1b] rounded-lg p-4 w-36 ${i !== stats.length - 1 ? 'mr-3' : ''}`}>
+             <View className="flex-row items-center mb-3">
+               <s.icon size={16} color={s.color} />
+             </View>
+             <Text className="text-[#888] text-[10px] tracking-widest uppercase font-bold mb-1" numberOfLines={1}>{s.label}</Text>
+             <Text style={{color: s.color}} className="text-2xl font-bold">{s.value}</Text>
+          </View>
+        ))}
+      </ScrollView>
+
+      {/* Active Projects */}
+      <View className="border border-[#ffffff1a] bg-[#1c1b1b] rounded-lg mb-6">
+        <View className="flex-row justify-between items-center px-4 py-3 border-b border-[#ffffff1a]">
+           <View className="flex-row items-center">
+             <FolderKanban size={16} color="#c847ff" className="mr-2" />
+             <Text className="text-[#888] text-[10px] tracking-widest uppercase font-bold">Active Projects</Text>
+           </View>
+           <TouchableOpacity onPress={() => navigateTo('ProjectsOverview')} className="flex-row items-center">
+             <Text className="text-[#888] text-[10px] tracking-widest uppercase mr-1">View All</Text>
+             <ArrowRight size={12} color="#888" />
+           </TouchableOpacity>
+        </View>
+        <View>
+          {activeProjects.length === 0 ? (
+            <Text className="text-[#888] text-[10px] tracking-widest uppercase text-center py-6">No active projects</Text>
+          ) : (
+            activeProjects.slice(0, 10).map((p, idx) => (
+              <View key={p._id} className={`flex-row justify-between items-center px-4 py-3 ${idx !== 0 ? 'border-t border-[#ffffff1a]' : ''}`}>
+                <Text className="text-white text-xs font-bold flex-1 mr-2" numberOfLines={1}>{p.name}</Text>
+                <StatusBadge status={p.status} />
+              </View>
+            ))
+          )}
         </View>
       </View>
 
+      {/* Top Performers */}
+      <View className="border border-[#ffffff1a] bg-[#1c1b1b] rounded-lg mb-6">
+        <View className="flex-row justify-between items-center px-4 py-3 border-b border-[#ffffff1a]">
+           <View className="flex-row items-center">
+             <Trophy size={16} color="#e8a847" className="mr-2" />
+             <Text className="text-[#888] text-[10px] tracking-widest uppercase font-bold">Top Performers</Text>
+           </View>
+           <TouchableOpacity onPress={() => navigateTo('Leaderboard')} className="flex-row items-center">
+             <Text className="text-[#888] text-[10px] tracking-widest uppercase mr-1">Leaderboard</Text>
+             <ArrowRight size={12} color="#888" />
+           </TouchableOpacity>
+        </View>
+        <View>
+          {data.leaderboard.length === 0 ? (
+            <Text className="text-[#888] text-[10px] tracking-widest uppercase text-center py-6">No data yet</Text>
+          ) : (
+            data.leaderboard.slice(0, 5).map((emp, idx) => {
+              const m = MEDALS[idx] || MEDALS[2];
+              return (
+                <View key={emp._id || emp.id} className={`flex-row items-center px-4 py-3 ${idx !== 0 ? 'border-t border-[#ffffff1a]' : ''}`}>
+                  <View className={`border rounded px-2 py-0.5 mr-3 ${m.bg} ${m.border}`}>
+                    <Text className={`text-[10px] font-bold uppercase tracking-widest ${m.color}`}>{m.label}</Text>
+                  </View>
+                  <View className="flex-1 mr-2">
+                    <Text className="text-white text-xs font-bold" numberOfLines={1}>{emp.name}</Text>
+                    <Text className="text-[#888] text-[10px] mt-0.5">{emp.score ?? 0} pts</Text>
+                  </View>
+                  <Text className={`text-lg font-bold ${m.color}`}>{emp.score ?? 0}</Text>
+                </View>
+              );
+            })
+          )}
+        </View>
+      </View>
+
+      {/* Tasks */}
+      <View className="border border-[#ffffff1a] bg-[#1c1b1b] rounded-lg mb-6">
+        <View className="flex-row justify-between items-center px-4 py-3 border-b border-[#ffffff1a]">
+           <View className="flex-row items-center">
+             <ClipboardList size={16} color="#47c8ff" className="mr-2" />
+             <Text className="text-[#888] text-[10px] tracking-widest uppercase font-bold">Tasks</Text>
+           </View>
+           <TouchableOpacity onPress={() => navigateTo('Tasks')} className="flex-row items-center">
+             <Text className="text-[#888] text-[10px] tracking-widest uppercase mr-1">View All</Text>
+             <ArrowRight size={12} color="#888" />
+           </TouchableOpacity>
+        </View>
+        <View>
+          {openTasks.length === 0 ? (
+            <Text className="text-[#888] text-[10px] tracking-widest uppercase text-center py-6">No open tasks</Text>
+          ) : (
+            openTasks.slice(0, 10).map((t, idx) => (
+              <View key={t._id} className={`flex-row justify-between items-center px-4 py-3 ${idx !== 0 ? 'border-t border-[#ffffff1a]' : ''}`}>
+                <View className="flex-1 mr-2">
+                  <Text className="text-white text-xs font-bold" numberOfLines={1}>{t.title}</Text>
+                  <Text className="text-[#888] text-[10px] mt-0.5">{t.created_by?.name || "Admin"}</Text>
+                </View>
+                <View className={`border px-2 py-0.5 rounded ${t.priority === 'HIGH' ? 'border-[#ff47474d] bg-[#ff47471a]' : t.priority === 'MEDIUM' ? 'border-[#47c8ff4d] bg-[#47c8ff1a]' : 'border-[#88888833] bg-[#8888881a]'}`}>
+                  <Text className={`text-[10px] uppercase font-bold tracking-widest ${t.priority === 'HIGH' ? 'text-[#ff4747]' : t.priority === 'MEDIUM' ? 'text-[#47c8ff]' : 'text-[#888]'}`}>{t.status}</Text>
+                </View>
+              </View>
+            ))
+          )}
+        </View>
+      </View>
+
+      {/* Issues */}
+      <View className="border border-[#ffffff1a] bg-[#1c1b1b] rounded-lg mb-8">
+        <View className="flex-row justify-between items-center px-4 py-3 border-b border-[#ffffff1a]">
+           <View className="flex-row items-center">
+             <Bug size={16} color="#ff4747" className="mr-2" />
+             <Text className="text-[#888] text-[10px] tracking-widest uppercase font-bold">Issues</Text>
+           </View>
+           <TouchableOpacity onPress={() => navigateTo('Issues')} className="flex-row items-center">
+             <Text className="text-[#888] text-[10px] tracking-widest uppercase mr-1">View All</Text>
+             <ArrowRight size={12} color="#888" />
+           </TouchableOpacity>
+        </View>
+        <View>
+          {openBugs.length === 0 ? (
+            <View className="flex-row items-center justify-center py-6">
+               <CheckCircle2 size={16} color="#47ff8a" className="mr-2" />
+               <Text className="text-[#47ff8a] text-[10px] tracking-widest uppercase font-bold">NO ISSUES !</Text>
+            </View>
+          ) : (
+            openBugs.slice(0, 10).map((b, idx) => {
+              const proj = data.projects.find((p) => p._id === b.projectId);
+              return (
+                <View key={b._id} className={`flex-row justify-between items-center px-4 py-3 ${idx !== 0 ? 'border-t border-[#ffffff1a]' : ''}`}>
+                  <View className="flex-1 mr-2">
+                    <Text className="text-white text-xs font-bold" numberOfLines={1}>{b.title}</Text>
+                    <Text className="text-[#888] text-[10px] mt-0.5">{proj?.name || "Project"}</Text>
+                  </View>
+                  <View className={`border px-2 py-0.5 rounded ${b.severity === 'CRITICAL' ? 'border-[#ff47474d] bg-[#ff47471a]' : b.severity === 'HIGH' ? 'border-[#e8a8474d] bg-[#e8a8471a]' : 'border-[#88888833] bg-[#8888881a]'}`}>
+                    <Text className={`text-[10px] uppercase font-bold tracking-widest ${b.severity === 'CRITICAL' ? 'text-[#ff4747]' : b.severity === 'HIGH' ? 'text-[#e8a847]' : 'text-[#888]'}`}>{b.severity}</Text>
+                  </View>
+                </View>
+              );
+            })
+          )}
+        </View>
+      </View>
+
+      {/* Departments */}
+      <View className="border border-[#ffffff1a] bg-[#1c1b1b] rounded-lg mb-8">
+        <View className="flex-row justify-between items-center px-4 py-3 border-b border-[#ffffff1a]">
+           <View className="flex-row items-center">
+             <Building2 size={16} color="#47c8ff" className="mr-2" />
+             <Text className="text-[#888] text-[10px] tracking-widest uppercase font-bold">Departments</Text>
+           </View>
+           <TouchableOpacity onPress={() => navigateTo('Departments')} className="flex-row items-center">
+             <Text className="text-[#888] text-[10px] tracking-widest uppercase mr-1">Manage</Text>
+             <ArrowRight size={12} color="#888" />
+           </TouchableOpacity>
+        </View>
+        <View>
+          {data.depts.length === 0 ? (
+             <Text className="text-[#888] text-[10px] tracking-widest uppercase text-center py-6">No departments yet</Text>
+          ) : (
+             data.depts.slice(0, 10).map((d, idx) => (
+                <View key={d._id || d.id || idx} className={`flex-row justify-between items-center px-4 py-3 ${idx !== 0 ? 'border-t border-[#ffffff1a]' : ''}`}>
+                   <Text className="text-white text-xs font-bold" numberOfLines={1}>{(d.departmentName || d.name || '').toUpperCase()}</Text>
+                   <Text className="text-[#888] text-[10px] tracking-widest">{d.employeeCount ?? 0} Employee</Text>
+                </View>
+             ))
+          )}
+        </View>
+      </View>
+
+      <View className="h-6" />
     </ScrollView>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import client from '../../api/client';
 import { Bell, Clock, CheckCircle } from 'lucide-react-native';
 
@@ -22,8 +22,32 @@ export default function NotificationsScreen() {
     fetchNotifications();
   }, []);
 
+  const markAllRead = async () => {
+    try {
+      await client.patch('/notifications/read-all');
+      fetchNotifications();
+    } catch (error) {
+      console.error("Failed to mark all as read", error);
+      Alert.alert("Error", "Failed to mark notifications as read.");
+    }
+  };
+
+  const markAsRead = async (id, isRead) => {
+    if (isRead) return;
+    try {
+      await client.patch(`/notifications/${id}/read`);
+      fetchNotifications();
+    } catch (error) {
+      console.error("Failed to mark as read", error);
+    }
+  };
+
   const renderItem = ({ item }) => (
-    <View className={`rounded-lg p-4 mb-3 border ${item.read ? 'bg-[#131313] border-[#ffffff0a]' : 'bg-[#1c1b1b] border-[#adc6ff50]'}`}>
+    <TouchableOpacity 
+      activeOpacity={0.8}
+      onPress={() => markAsRead(item._id, item.read)}
+      className={`rounded-lg p-4 mb-3 border ${item.read ? 'bg-[#131313] border-[#ffffff0a]' : 'bg-[#1c1b1b] border-[#adc6ff50]'}`}
+    >
       <View className="flex-row items-start">
         <View className={`h-2 w-2 rounded-full mt-1.5 mr-3 ${item.read ? 'bg-transparent' : 'bg-[#adc6ff]'}`} />
         <View className="flex-1">
@@ -41,16 +65,16 @@ export default function NotificationsScreen() {
           </View>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
     <View className="flex-1 bg-[#131313] p-4">
       <View className="flex-row justify-between items-center mb-6 mt-4">
         <Text className="text-white text-2xl font-bold tracking-wider">NOTIFICATIONS</Text>
-        <TouchableOpacity className="flex-row items-center">
-          <CheckCircle size={16} color="#adc6ff" className="mr-1" />
-          <Text className="text-[#adc6ff] font-bold text-xs">Mark All Read</Text>
+        <TouchableOpacity onPress={markAllRead} className="flex-row items-center bg-[#adc6ff1a] px-3 py-1.5 rounded-full border border-[#adc6ff4a]">
+          <CheckCircle size={14} color="#adc6ff" className="mr-2" />
+          <Text className="text-[#adc6ff] font-bold text-xs uppercase tracking-wider">Mark All Read</Text>
         </TouchableOpacity>
       </View>
 
