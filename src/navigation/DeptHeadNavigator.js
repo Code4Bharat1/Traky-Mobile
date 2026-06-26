@@ -16,44 +16,46 @@ import {
   FileText,
   Bell,
   LogOut,
-  Menu,
 } from 'lucide-react-native';
 import useAuthStore from '../store/authStore';
 
 // ── Screens ────────────────────────────────────────────────────────────────────
-import DeptHeadDashboard from '../screens/DeptHead/DeptHeadDashboard';
-
-// Placeholder for screens not yet built
-function PlaceholderScreen({ route }) {
-  return (
-    <View style={styles.placeholder}>
-      <Text style={styles.placeholderTitle}>{route.name}</Text>
-      <Text style={styles.placeholderSub}>Coming soon</Text>
-    </View>
-  );
-}
+import DeptHeadDashboard      from '../screens/DeptHead/DeptHeadDashboard';
+import ProjectsScreen         from '../screens/DeptHead/ProjectsScreen';
+import TasksScreen            from '../screens/DeptHead/TasksScreen';
+import IssuesScreen           from '../screens/DeptHead/IssuesScreen';
+import EmployeeScreen         from '../screens/DeptHead/EmployeeScreen';
+import TeamAttendanceScreen   from '../screens/DeptHead/TeamAttendanceScreen';
+import LeaveApprovalsScreen   from '../screens/DeptHead/LeaveApprovalsScreen';
+import ExpensesScreen         from '../screens/DeptHead/ExpensesScreen';
+import LeaderboardScreen      from '../screens/DeptHead/LeaderboardScreen';
+import DailyLogsScreen        from '../screens/DeptHead/DailyLogsScreen';
+import KTDocumentsScreen      from '../screens/DeptHead/KTDocumentsScreen';
+import ReportsScreen          from '../screens/DeptHead/ReportsScreen';
+import EmployeeReportScreen   from '../screens/DeptHead/EmployeeReportScreen';
+import NotificationsScreen    from '../screens/DeptHead/NotificationsScreen';
 
 const Drawer = createDrawerNavigator();
 
-// ── Sidebar items — mirrors web dept-head layout.js NAV_ITEMS exactly ─────────
+// ── Sidebar config — mirrors web dept-head NAV_ITEMS exactly ──────────────────
 const NAV_ITEMS = [
   { name: 'Dashboard',       label: 'DASHBOARD',        Icon: LayoutDashboard, component: DeptHeadDashboard },
-  { name: 'Projects',        label: 'PROJECTS',          Icon: FolderKanban,    component: PlaceholderScreen },
-  { name: 'Tasks',           label: 'TASKS',             Icon: ListTodo,        component: PlaceholderScreen },
-  { name: 'Issues',          label: 'ISSUES',            Icon: Bug,             component: PlaceholderScreen },
-  { name: 'Employee',        label: 'EMPLOYEE',          Icon: Users,           component: PlaceholderScreen },
-  { name: 'TeamAttendance',  label: 'TEAM ATTENDANCE',   Icon: Users2,          component: PlaceholderScreen },
-  { name: 'LeaveApprovals',  label: 'LEAVE APPROVALS',   Icon: Umbrella,        component: PlaceholderScreen },
-  { name: 'Expenses',        label: 'EXPENSES',          Icon: CreditCard,      component: PlaceholderScreen },
-  { name: 'Leaderboard',     label: 'LEADERBOARD',       Icon: BarChart3,       component: PlaceholderScreen },
-  { name: 'DailyLogs',       label: 'DAILY LOGS',        Icon: BookCheck,       component: PlaceholderScreen },
-  { name: 'KTDocuments',     label: 'KT DOCUMENTS',      Icon: BookOpen,        component: PlaceholderScreen },
-  { name: 'Reports',         label: 'REPORTS',           Icon: FileText,        component: PlaceholderScreen },
-  { name: 'EmployeeReport',  label: 'EMPLOYEE REPORT',   Icon: BarChart3,       component: PlaceholderScreen },
-  { name: 'Notifications',   label: 'NOTIFICATIONS',     Icon: Bell,            component: PlaceholderScreen },
+  { name: 'Projects',        label: 'PROJECTS',          Icon: FolderKanban,    component: ProjectsScreen },
+  { name: 'Tasks',           label: 'TASKS',             Icon: ListTodo,        component: TasksScreen },
+  { name: 'Issues',          label: 'ISSUES',            Icon: Bug,             component: IssuesScreen },
+  { name: 'Employee',        label: 'EMPLOYEE',          Icon: Users,           component: EmployeeScreen },
+  { name: 'TeamAttendance',  label: 'TEAM ATTENDANCE',   Icon: Users2,          component: TeamAttendanceScreen },
+  { name: 'LeaveApprovals',  label: 'LEAVE APPROVALS',   Icon: Umbrella,        component: LeaveApprovalsScreen },
+  { name: 'Expenses',        label: 'EXPENSES',          Icon: CreditCard,      component: ExpensesScreen },
+  { name: 'Leaderboard',     label: 'LEADERBOARD',       Icon: BarChart3,       component: LeaderboardScreen },
+  { name: 'DailyLogs',       label: 'DAILY LOGS',        Icon: BookCheck,       component: DailyLogsScreen },
+  { name: 'KTDocuments',     label: 'KT DOCUMENTS',      Icon: BookOpen,        component: KTDocumentsScreen },
+  { name: 'Reports',         label: 'REPORTS',           Icon: FileText,        component: ReportsScreen },
+  { name: 'EmployeeReport',  label: 'EMPLOYEE REPORT',   Icon: BarChart3,       component: EmployeeReportScreen },
+  { name: 'Notifications',   label: 'NOTIFICATIONS',     Icon: Bell,            component: NotificationsScreen },
 ];
 
-// ── Custom Drawer Content ──────────────────────────────────────────────────────
+// ── Custom Drawer Content ─────────────────────────────────────────────────────
 function DeptHeadDrawerContent(props) {
   const { navigation, state } = props;
   const { logout, user } = useAuthStore();
@@ -68,14 +70,15 @@ function DeptHeadDrawerContent(props) {
       {/* ── Header ── */}
       <View style={styles.drawerHeader}>
         <Text style={styles.drawerBrand}>TRAKY</Text>
-        <Text style={styles.drawerSubtitle}>EMPLOYEE PORTAL</Text>
+        <Text style={styles.drawerSubtitle}>DEPT HEAD PORTAL</Text>
       </View>
 
       {/* ── Nav Items ── */}
       <DrawerContentScrollView
         {...props}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+      >
         {NAV_ITEMS.map((item, index) => {
           const isActive = activeIndex === index;
           return (
@@ -83,10 +86,11 @@ function DeptHeadDrawerContent(props) {
               key={item.name}
               onPress={() => navigation.navigate(item.name)}
               style={[styles.navItem, isActive && styles.navItemActive]}
-              activeOpacity={0.7}>
+              activeOpacity={0.7}
+            >
               <item.Icon
                 size={18}
-                color={isActive ? '#ffffff' : '#1f2937'}
+                color={isActive ? '#131313' : '#c2c6d6'}
                 strokeWidth={1.75}
               />
               <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
@@ -101,11 +105,12 @@ function DeptHeadDrawerContent(props) {
       <TouchableOpacity
         style={styles.signOutBtn}
         onPress={logout}
-        activeOpacity={0.8}>
+        activeOpacity={0.8}
+      >
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{initials}</Text>
         </View>
-        <LogOut size={16} color="#1f2937" strokeWidth={1.75} style={{ marginLeft: 8 }} />
+        <LogOut size={16} color="#ef4444" strokeWidth={1.75} style={{ marginLeft: 8 }} />
         <Text style={styles.signOutLabel}>SIGN OUT</Text>
       </TouchableOpacity>
     </View>
@@ -118,12 +123,16 @@ export default function DeptHeadNavigator() {
     <Drawer.Navigator
       drawerContent={(props) => <DeptHeadDrawerContent {...props} />}
       screenOptions={{
-        headerStyle: { backgroundColor: '#ffffff' },
-        headerTintColor: '#0f172a',
-        headerTitleStyle: { fontWeight: '700', fontSize: 16 },
-        drawerStyle: { width: 260, backgroundColor: '#ffffff' },
+        headerStyle: { backgroundColor: '#131313', shadowColor: 'transparent', elevation: 0 },
+        headerTintColor: '#ffffff',
+        headerTitleStyle: { fontWeight: '700', fontSize: 16, letterSpacing: 1 },
+        drawerStyle: { backgroundColor: '#131313', width: 280 },
+        drawerActiveBackgroundColor: '#adc6ff',
+        drawerActiveTintColor: '#131313',
+        drawerInactiveTintColor: '#c2c6d6',
         swipeEdgeWidth: 60,
-      }}>
+      }}
+    >
       {NAV_ITEMS.map((item) => (
         <Drawer.Screen
           key={item.name}
@@ -140,19 +149,19 @@ export default function DeptHeadNavigator() {
 const styles = StyleSheet.create({
   drawerContainer: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#131313',
   },
   drawerHeader: {
     paddingHorizontal: 20,
     paddingTop: 56,
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(15,23,42,0.1)',
+    borderBottomColor: '#2a2a2a',
   },
   drawerBrand: {
     fontSize: 18,
     fontWeight: '900',
-    color: '#0f172a',
+    color: '#ffffff',
     letterSpacing: 2,
   },
   drawerSubtitle: {
@@ -172,19 +181,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 13,
     marginHorizontal: 8,
-    borderRadius: 6,
+    borderRadius: 4,
   },
   navItemActive: {
-    backgroundColor: '#2573e6',
+    backgroundColor: '#adc6ff',
   },
   navLabel: {
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.8,
-    color: '#1f2937',
+    color: '#c2c6d6',
   },
   navLabelActive: {
-    color: '#ffffff',
+    color: '#131313',
   },
   signOutBtn: {
     flexDirection: 'row',
@@ -192,13 +201,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 18,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(15,23,42,0.1)',
+    borderTopColor: '#2a2a2a',
   },
   avatar: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#2573e6',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -211,23 +220,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.8,
-    color: '#1f2937',
+    color: '#ef4444',
     marginLeft: 10,
-  },
-  placeholder: {
-    flex: 1,
-    backgroundColor: '#f6f7f9',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  placeholderTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  placeholderSub: {
-    fontSize: 13,
-    color: '#6b7280',
   },
 });
