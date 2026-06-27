@@ -40,7 +40,7 @@ const useAuthStore = create((set, get) => ({
   login: async (email, password) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await client.post('/auth/login', { email: 'tiwariv31@proton.me', password: 'admin123' });
+      const response = await client.post('/auth/login', { email, password });
 
       const accessToken = response.data.accessToken || response.data.token;
       if (!accessToken) throw new Error("No access token returned from server");

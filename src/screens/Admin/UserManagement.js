@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Modal, Alert, ScrollView } from 'react-native';
 import client from '../../api/client';
 import { Search, User, Edit2, Trash2, Plus, X, ChevronDown, CheckCircle, Shield } from 'lucide-react-native';
+import useThemeStore from '../../store/themeStore';
 
 export default function UserManagement() {
+  const { isDarkMode } = useThemeStore();
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -200,34 +202,42 @@ export default function UserManagement() {
     });
   };
 
+  const bgScreen = isDarkMode ? 'bg-[#131313]' : 'bg-gray-50';
+  const bgCard = isDarkMode ? 'bg-[#1c1b1b]' : 'bg-white';
+  const bgRow = isDarkMode ? 'bg-[#161616]' : 'bg-white';
+  const bgInput = isDarkMode ? 'bg-[#201f1f]' : 'bg-gray-100';
+  const borderColor = isDarkMode ? 'border-[#ffffff1a]' : 'border-gray-200';
+  const textColor = isDarkMode ? 'text-white' : 'text-gray-900';
+  const textMuted = isDarkMode ? 'text-[#888]' : 'text-gray-500';
+
   const renderItem = ({ item }) => (
-    <View className="flex-row border-b border-[#ffffff1a] bg-[#161616] py-3 px-4 items-center">
+    <View className={`flex-row border-b py-3 px-4 items-center ${borderColor} ${bgRow}`}>
       <View className="w-48 flex-row items-center">
-        <View className="h-6 w-6 rounded bg-[#201f1f] items-center justify-center mr-2">
-           <Text className="text-[#888] text-[10px] font-bold uppercase">{item.name?.charAt(0)}</Text>
+        <View className={`h-6 w-6 rounded items-center justify-center mr-2 ${bgInput}`}>
+           <Text className={`text-[10px] font-bold uppercase ${textMuted}`}>{item.name?.charAt(0)}</Text>
         </View>
-        <Text className="text-white text-xs font-bold w-[80%]" numberOfLines={1}>{item.name}</Text>
+        <Text className={`text-xs font-bold w-[80%] ${textColor}`} numberOfLines={1}>{item.name}</Text>
       </View>
-      <Text className="w-56 text-[#c2c6d6] text-xs" numberOfLines={1}>{item.email}</Text>
+      <Text className={`w-56 text-xs ${isDarkMode ? 'text-[#c2c6d6]' : 'text-gray-600'}`} numberOfLines={1}>{item.email}</Text>
       <View className="w-32 items-start">
-         <View className="bg-[#adc6ff1a] border border-[#adc6ff4a] px-2 py-0.5 rounded">
-            <Text className="text-[#adc6ff] text-[10px] uppercase font-bold tracking-widest">
+         <View className={`px-2 py-0.5 rounded border ${isDarkMode ? 'bg-[#adc6ff1a] border-[#adc6ff4a]' : 'bg-blue-50 border-blue-200'}`}>
+            <Text className={`text-[10px] uppercase font-bold tracking-widest ${isDarkMode ? 'text-[#adc6ff]' : 'text-[#2573e6]'}`}>
               {formatRole(item.globalRole || item.role?.name || item.role)}
             </Text>
          </View>
       </View>
-      <Text className="w-32 text-[#888] text-xs uppercase" numberOfLines={1}>{item.departmentId?.departmentName || '—'}</Text>
-      <Text className="w-32 text-[#888] text-xs uppercase" numberOfLines={1}>{item.branchId?.branchName || '—'}</Text>
+      <Text className={`w-32 text-xs uppercase ${textMuted}`} numberOfLines={1}>{item.departmentId?.departmentName || '—'}</Text>
+      <Text className={`w-32 text-xs uppercase ${textMuted}`} numberOfLines={1}>{item.branchId?.branchName || '—'}</Text>
       <View className="w-24 flex-row items-center">
          <View className={`h-1.5 w-1.5 rounded-full mr-1 ${item.isActive ? 'bg-[#10b981]' : 'bg-[#ef4444]'}`} />
-         <Text className="text-[#c2c6d6] text-[10px] uppercase font-bold tracking-widest">{item.isActive ? 'ACTIVE' : 'INACTIVE'}</Text>
+         <Text className={`text-[10px] uppercase font-bold tracking-widest ${isDarkMode ? 'text-[#c2c6d6]' : 'text-gray-600'}`}>{item.isActive ? 'ACTIVE' : 'INACTIVE'}</Text>
       </View>
       <View className="w-24 flex-row items-center">
         <TouchableOpacity onPress={() => openPermModal(item)} className="p-1.5">
-          <Shield size={14} color="#888" />
+          <Shield size={14} color={isDarkMode ? "#888" : "#555"} />
         </TouchableOpacity>
         <TouchableOpacity onPress={() => openModal(item)} className="p-1.5 ml-1">
-          <Edit2 size={14} color="#c2c6d6" />
+          <Edit2 size={14} color={isDarkMode ? "#c2c6d6" : "#4b5563"} />
         </TouchableOpacity>
         <TouchableOpacity onPress={() => handleDelete(item._id)} className="p-1.5 ml-1">
           <Trash2 size={14} color="#ef4444" />
@@ -237,20 +247,20 @@ export default function UserManagement() {
   );
 
   return (
-    <View className="flex-1 bg-[#131313] p-4">
+    <View className={`flex-1 p-4 ${bgScreen}`}>
       <View className="flex-row justify-between items-center mb-4 mt-4">
-        <Text className="text-white text-2xl font-bold tracking-wider">USER DIRECTORY</Text>
-        <TouchableOpacity onPress={() => openModal()} className="bg-[#adc6ff] p-2 rounded-full">
-          <Plus size={20} color="#131313" />
+        <Text className={`text-2xl font-bold tracking-wider ${textColor}`}>USER DIRECTORY</Text>
+        <TouchableOpacity onPress={() => openModal()} className={`p-2 rounded-full ${isDarkMode ? 'bg-[#adc6ff]' : 'bg-[#2573e6]'}`}>
+          <Plus size={20} color={isDarkMode ? "#131313" : "#ffffff"} />
         </TouchableOpacity>
       </View>
       
-      <View className="flex-row items-center bg-[#201f1f] border border-[#ffffff33] rounded h-10 px-3 mb-4">
-        <Search size={16} color="#c2c6d6" />
+      <View className={`flex-row items-center border rounded h-10 px-3 mb-4 ${bgInput} ${borderColor}`}>
+        <Search size={16} color={isDarkMode ? "#c2c6d6" : "#6b7280"} />
         <TextInput 
-          className="flex-1 text-white text-sm ml-2 py-0"
+          className={`flex-1 text-sm ml-2 py-0 ${textColor}`}
           placeholder="Search by name or email..."
-          placeholderTextColor="#6b7280"
+          placeholderTextColor={isDarkMode ? "#6b7280" : "#9ca3af"}
           value={search}
           onChangeText={setSearch}
         />
@@ -259,44 +269,44 @@ export default function UserManagement() {
       {/* Filters */}
       <View className="mb-4">
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
-           <TouchableOpacity onPress={() => { setDropdownType('filterRole'); setDropdownVisible(true); }} className="bg-[#1c1b1b] border border-[#ffffff1a] rounded px-3 py-2 flex-row items-center mr-2">
-              <Text className="text-white text-xs mr-2 capitalize">{filterRole === 'all' ? 'All Roles' : formatRole(filterRole)}</Text>
-              <ChevronDown size={14} color="#888" />
+           <TouchableOpacity onPress={() => { setDropdownType('filterRole'); setDropdownVisible(true); }} className={`border rounded px-3 py-2 flex-row items-center mr-2 ${bgCard} ${borderColor}`}>
+              <Text className={`text-xs mr-2 capitalize ${textColor}`}>{filterRole === 'all' ? 'All Roles' : formatRole(filterRole)}</Text>
+              <ChevronDown size={14} color={isDarkMode ? "#888" : "#555"} />
            </TouchableOpacity>
-           <TouchableOpacity onPress={() => { setDropdownType('filterStatus'); setDropdownVisible(true); }} className="bg-[#1c1b1b] border border-[#ffffff1a] rounded px-3 py-2 flex-row items-center mr-2">
-              <Text className="text-white text-xs mr-2 capitalize">{filterStatus === 'all' ? 'All Status' : filterStatus}</Text>
-              <ChevronDown size={14} color="#888" />
+           <TouchableOpacity onPress={() => { setDropdownType('filterStatus'); setDropdownVisible(true); }} className={`border rounded px-3 py-2 flex-row items-center mr-2 ${bgCard} ${borderColor}`}>
+              <Text className={`text-xs mr-2 capitalize ${textColor}`}>{filterStatus === 'all' ? 'All Status' : filterStatus}</Text>
+              <ChevronDown size={14} color={isDarkMode ? "#888" : "#555"} />
            </TouchableOpacity>
-           <TouchableOpacity onPress={() => { setDropdownType('filterDept'); setDropdownVisible(true); }} className="bg-[#1c1b1b] border border-[#ffffff1a] rounded px-3 py-2 flex-row items-center mr-2">
-              <Text className="text-white text-xs mr-2 capitalize">{filterDept === 'all' ? 'All Depts' : departments.find(d => d._id === filterDept)?.departmentName || 'Unknown'}</Text>
-              <ChevronDown size={14} color="#888" />
+           <TouchableOpacity onPress={() => { setDropdownType('filterDept'); setDropdownVisible(true); }} className={`border rounded px-3 py-2 flex-row items-center mr-2 ${bgCard} ${borderColor}`}>
+              <Text className={`text-xs mr-2 capitalize ${textColor}`}>{filterDept === 'all' ? 'All Depts' : departments.find(d => d._id === filterDept)?.departmentName || 'Unknown'}</Text>
+              <ChevronDown size={14} color={isDarkMode ? "#888" : "#555"} />
            </TouchableOpacity>
-           <TouchableOpacity onPress={() => { setDropdownType('filterBranch'); setDropdownVisible(true); }} className="bg-[#1c1b1b] border border-[#ffffff1a] rounded px-3 py-2 flex-row items-center mr-2">
-              <Text className="text-white text-xs mr-2 capitalize">{filterBranch === 'all' ? 'All Branches' : branches.find(b => b._id === filterBranch)?.branchName || 'Unknown'}</Text>
-              <ChevronDown size={14} color="#888" />
+           <TouchableOpacity onPress={() => { setDropdownType('filterBranch'); setDropdownVisible(true); }} className={`border rounded px-3 py-2 flex-row items-center mr-2 ${bgCard} ${borderColor}`}>
+              <Text className={`text-xs mr-2 capitalize ${textColor}`}>{filterBranch === 'all' ? 'All Branches' : branches.find(b => b._id === filterBranch)?.branchName || 'Unknown'}</Text>
+              <ChevronDown size={14} color={isDarkMode ? "#888" : "#555"} />
            </TouchableOpacity>
         </ScrollView>
       </View>
 
-      <Text className="text-[#888] text-xs font-bold tracking-widest uppercase mb-3">
+      <Text className={`text-xs font-bold tracking-widest uppercase mb-3 ${textMuted}`}>
         {filteredUsers.length} OF {users.length} USERS
       </Text>
 
       {/* Table */}
-      <View className="flex-1 bg-[#1c1b1b] border border-[#ffffff1a] rounded-lg overflow-hidden mt-2">
+      <View className={`flex-1 border rounded-lg overflow-hidden mt-2 ${bgCard} ${borderColor}`}>
         <ScrollView horizontal showsHorizontalScrollIndicator={true}>
           <View style={{ minWidth: 1000 }}>
-            <View className="flex-row border-b border-[#ffffff1a] bg-[#161616] py-3 px-4">
-              <Text className="w-48 text-[#888] text-[10px] font-bold tracking-widest uppercase">Name</Text>
-              <Text className="w-56 text-[#888] text-[10px] font-bold tracking-widest uppercase">Email</Text>
-              <Text className="w-32 text-[#888] text-[10px] font-bold tracking-widest uppercase">Role</Text>
-              <Text className="w-32 text-[#888] text-[10px] font-bold tracking-widest uppercase">Department</Text>
-              <Text className="w-32 text-[#888] text-[10px] font-bold tracking-widest uppercase">Branch</Text>
-              <Text className="w-24 text-[#888] text-[10px] font-bold tracking-widest uppercase">Status</Text>
-              <Text className="w-24 text-[#888] text-[10px] font-bold tracking-widest uppercase">Action</Text>
+            <View className={`flex-row border-b py-3 px-4 ${borderColor} ${bgRow}`}>
+              <Text className={`w-48 text-[10px] font-bold tracking-widest uppercase ${textMuted}`}>Name</Text>
+              <Text className={`w-56 text-[10px] font-bold tracking-widest uppercase ${textMuted}`}>Email</Text>
+              <Text className={`w-32 text-[10px] font-bold tracking-widest uppercase ${textMuted}`}>Role</Text>
+              <Text className={`w-32 text-[10px] font-bold tracking-widest uppercase ${textMuted}`}>Department</Text>
+              <Text className={`w-32 text-[10px] font-bold tracking-widest uppercase ${textMuted}`}>Branch</Text>
+              <Text className={`w-24 text-[10px] font-bold tracking-widest uppercase ${textMuted}`}>Status</Text>
+              <Text className={`w-24 text-[10px] font-bold tracking-widest uppercase ${textMuted}`}>Action</Text>
             </View>
             {loading ? (
-              <ActivityIndicator size="large" color="#adc6ff" className="mt-10" />
+              <ActivityIndicator size="large" color={isDarkMode ? "#adc6ff" : "#2573e6"} className="mt-10" />
             ) : (
               <FlatList 
                 data={filteredUsers}
@@ -304,7 +314,7 @@ export default function UserManagement() {
                 renderItem={renderItem}
                 showsVerticalScrollIndicator={true}
                 ListEmptyComponent={
-                  <Text className="text-[#888] text-center py-6 text-xs">No users found.</Text>
+                  <Text className={`text-center py-6 text-xs ${textMuted}`}>No users found.</Text>
                 }
               />
             )}
@@ -315,86 +325,86 @@ export default function UserManagement() {
       {/* CRUD Modal */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View className="flex-1 justify-end bg-[#000000cc]">
-          <View className="bg-[#1c1b1b] border-t border-[#ffffff1a] rounded-t-2xl p-6 h-[85%]">
+          <View className={`border-t rounded-t-2xl p-6 h-[85%] ${bgCard} ${borderColor}`}>
             <View className="flex-row justify-between items-center mb-6">
-               <Text className="text-white text-lg font-bold tracking-widest uppercase">{editingUser ? 'Edit User' : 'Add User'}</Text>
-               <TouchableOpacity onPress={() => setModalVisible(false)}><X size={24} color="#888" /></TouchableOpacity>
+               <Text className={`text-lg font-bold tracking-widest uppercase ${textColor}`}>{editingUser ? 'Edit User' : 'Add User'}</Text>
+               <TouchableOpacity onPress={() => setModalVisible(false)}><X size={24} color={isDarkMode ? "#888" : "#555"} /></TouchableOpacity>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase">Full Name *</Text>
-              <View className="border border-[#ffffff1a] bg-[#131313] rounded p-3 mb-4">
+              <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Full Name *</Text>
+              <View className={`border rounded p-3 mb-4 ${bgScreen} ${borderColor}`}>
                  <TextInput 
                    value={formData.name} 
                    onChangeText={v => setFormData({...formData, name: v})} 
                    placeholder="e.g. John Doe" 
-                   placeholderTextColor="#888" 
-                   className="text-white text-base py-1" 
+                   placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"} 
+                   className={`text-base py-1 ${textColor}`} 
                  />
               </View>
 
-              <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase">Email Address *</Text>
-              <View className="border border-[#ffffff1a] bg-[#131313] rounded p-3 mb-4">
+              <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Email Address *</Text>
+              <View className={`border rounded p-3 mb-4 ${bgScreen} ${borderColor}`}>
                  <TextInput 
                    value={formData.email} 
                    onChangeText={v => setFormData({...formData, email: v})} 
                    placeholder="john@example.com" 
-                   placeholderTextColor="#888" 
+                   placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"} 
                    keyboardType="email-address"
                    autoCapitalize="none"
-                   className="text-white text-base py-1" 
+                   className={`text-base py-1 ${textColor}`} 
                  />
               </View>
 
-              <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase">{editingUser ? 'New Password (Optional)' : 'Password *'}</Text>
-              <View className="border border-[#ffffff1a] bg-[#131313] rounded p-3 mb-4">
+              <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>{editingUser ? 'New Password (Optional)' : 'Password *'}</Text>
+              <View className={`border rounded p-3 mb-4 ${bgScreen} ${borderColor}`}>
                  <TextInput 
                    value={formData.password} 
                    onChangeText={v => setFormData({...formData, password: v})} 
                    placeholder={editingUser ? "Leave blank to keep current" : "••••••••"} 
-                   placeholderTextColor="#888" 
+                   placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"} 
                    secureTextEntry
-                   className="text-white text-base py-1" 
+                   className={`text-base py-1 ${textColor}`} 
                  />
               </View>
 
-              <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase">Global Role *</Text>
-              <TouchableOpacity onPress={() => { setDropdownType('role'); setDropdownVisible(true); }} className="border border-[#ffffff1a] bg-[#131313] rounded p-4 mb-4 flex-row justify-between items-center">
-                 <Text className="text-white text-base capitalize">{formatRole(formData.globalRole)}</Text>
-                 <ChevronDown size={20} color="#888" />
+              <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Global Role *</Text>
+              <TouchableOpacity onPress={() => { setDropdownType('role'); setDropdownVisible(true); }} className={`border rounded p-4 mb-4 flex-row justify-between items-center ${bgScreen} ${borderColor}`}>
+                 <Text className={`text-base capitalize ${textColor}`}>{formatRole(formData.globalRole)}</Text>
+                 <ChevronDown size={20} color={isDarkMode ? "#888" : "#555"} />
               </TouchableOpacity>
 
-              <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase">Department (Optional)</Text>
-              <TouchableOpacity onPress={() => { setDropdownType('department'); setDropdownVisible(true); }} className="border border-[#ffffff1a] bg-[#131313] rounded p-4 mb-4 flex-row justify-between items-center">
-                 <Text className={formData.departmentId ? "text-white text-base capitalize" : "text-[#888] text-base"}>
+              <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Department (Optional)</Text>
+              <TouchableOpacity onPress={() => { setDropdownType('department'); setDropdownVisible(true); }} className={`border rounded p-4 mb-4 flex-row justify-between items-center ${bgScreen} ${borderColor}`}>
+                 <Text className={formData.departmentId ? `text-base capitalize ${textColor}` : `text-base ${textMuted}`}>
                    {formData.departmentId ? departments.find(d => d._id === formData.departmentId)?.departmentName || 'Unknown' : 'Select a department'}
                  </Text>
-                 <ChevronDown size={20} color="#888" />
+                 <ChevronDown size={20} color={isDarkMode ? "#888" : "#555"} />
               </TouchableOpacity>
 
-              <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase">Branch (Optional)</Text>
-              <TouchableOpacity onPress={() => { setDropdownType('branch'); setDropdownVisible(true); }} className="border border-[#ffffff1a] bg-[#131313] rounded p-4 mb-4 flex-row justify-between items-center">
-                 <Text className={formData.branchId ? "text-white text-base capitalize" : "text-[#888] text-base"}>
+              <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Branch (Optional)</Text>
+              <TouchableOpacity onPress={() => { setDropdownType('branch'); setDropdownVisible(true); }} className={`border rounded p-4 mb-4 flex-row justify-between items-center ${bgScreen} ${borderColor}`}>
+                 <Text className={formData.branchId ? `text-base capitalize ${textColor}` : `text-base ${textMuted}`}>
                    {formData.branchId ? branches.find(b => b._id === formData.branchId)?.branchName || 'Unknown' : 'Select a branch'}
                  </Text>
-                 <ChevronDown size={20} color="#888" />
+                 <ChevronDown size={20} color={isDarkMode ? "#888" : "#555"} />
               </TouchableOpacity>
               
-              <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase">Status</Text>
+              <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Status</Text>
               <View className="flex-row mb-8">
-                 <TouchableOpacity onPress={() => setFormData({...formData, isActive: true})} className={`flex-1 border py-3 rounded-l items-center ${formData.isActive ? 'border-[#adc6ff] bg-[#adc6ff1a]' : 'border-[#ffffff1a] bg-[#131313]'}`}>
-                    <Text className={`text-xs font-bold tracking-widest uppercase ${formData.isActive ? 'text-[#adc6ff]' : 'text-[#888]'}`}>ACTIVE</Text>
+                 <TouchableOpacity onPress={() => setFormData({...formData, isActive: true})} className={`flex-1 border py-3 rounded-l items-center ${formData.isActive ? (isDarkMode ? 'border-[#adc6ff] bg-[#adc6ff1a]' : 'border-blue-500 bg-blue-50') : `border-r-0 ${borderColor} ${bgScreen}`}`}>
+                    <Text className={`text-xs font-bold tracking-widest uppercase ${formData.isActive ? (isDarkMode ? 'text-[#adc6ff]' : 'text-[#2573e6]') : textMuted}`}>ACTIVE</Text>
                  </TouchableOpacity>
-                 <TouchableOpacity onPress={() => setFormData({...formData, isActive: false})} className={`flex-1 border border-l-0 py-3 rounded-r items-center ${!formData.isActive ? 'border-[#adc6ff] bg-[#adc6ff1a]' : 'border-[#ffffff1a] bg-[#131313]'}`}>
-                    <Text className={`text-xs font-bold tracking-widest uppercase ${!formData.isActive ? 'text-[#adc6ff]' : 'text-[#888]'}`}>INACTIVE</Text>
+                 <TouchableOpacity onPress={() => setFormData({...formData, isActive: false})} className={`flex-1 border py-3 rounded-r items-center ${!formData.isActive ? (isDarkMode ? 'border-[#adc6ff] bg-[#adc6ff1a]' : 'border-blue-500 bg-blue-50') : `border-l-0 ${borderColor} ${bgScreen}`}`}>
+                    <Text className={`text-xs font-bold tracking-widest uppercase ${!formData.isActive ? (isDarkMode ? 'text-[#adc6ff]' : 'text-[#2573e6]') : textMuted}`}>INACTIVE</Text>
                  </TouchableOpacity>
               </View>
             </ScrollView>
 
-            <View className="flex-row justify-end pt-4 border-t border-[#ffffff1a] mt-2 pb-6">
-               <TouchableOpacity onPress={() => setModalVisible(false)} className="mr-4 py-3 px-4"><Text className="text-white font-bold text-sm uppercase">Cancel</Text></TouchableOpacity>
-               <TouchableOpacity onPress={handleSave} disabled={saving} className="bg-[#adc6ff] px-6 py-3 rounded-lg flex-row items-center">
-                  {saving ? <ActivityIndicator size="small" color="#131313" /> : <Text className="text-[#131313] font-bold text-sm uppercase tracking-wider">Save User</Text>}
+            <View className={`flex-row justify-end pt-4 border-t mt-2 pb-6 ${borderColor}`}>
+               <TouchableOpacity onPress={() => setModalVisible(false)} className="mr-4 py-3 px-4"><Text className={`font-bold text-sm uppercase ${textColor}`}>Cancel</Text></TouchableOpacity>
+               <TouchableOpacity onPress={handleSave} disabled={saving} className={`px-6 py-3 rounded-lg flex-row items-center ${isDarkMode ? 'bg-[#adc6ff]' : 'bg-[#2573e6]'}`}>
+                  {saving ? <ActivityIndicator size="small" color={isDarkMode ? "#131313" : "#ffffff"} /> : <Text className={`font-bold text-sm uppercase tracking-wider ${isDarkMode ? 'text-[#131313]' : 'text-white'}`}>Save User</Text>}
                </TouchableOpacity>
             </View>
           </View>
@@ -404,13 +414,13 @@ export default function UserManagement() {
       {/* Generic Dropdown Modal */}
       <Modal visible={dropdownVisible} transparent animationType="fade">
         <TouchableOpacity style={{flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center'}} onPress={() => setDropdownVisible(false)}>
-          <View className="bg-[#1c1b1b] border border-[#ffffff1a] rounded-lg w-5/6 max-h-[60%] p-2">
+          <View className={`border rounded-lg w-5/6 max-h-[60%] p-2 ${bgCard} ${borderColor}`}>
             <FlatList
               data={getDropdownOptions()}
               keyExtractor={(item) => item._id || 'none'}
               renderItem={({item}) => (
-                <TouchableOpacity className="py-4 px-4 border-b border-[#ffffff1a] flex-row items-center justify-between" onPress={() => selectDropdownItem(item)}>
-                  <Text className="text-white text-base capitalize">{item.name}</Text>
+                <TouchableOpacity className={`py-4 px-4 border-b flex-row items-center justify-between ${borderColor}`} onPress={() => selectDropdownItem(item)}>
+                  <Text className={`text-base capitalize ${textColor}`}>{item.name}</Text>
                   {((dropdownType === 'role' && formData.globalRole === item._id) || 
                     (dropdownType === 'department' && formData.departmentId === item._id) ||
                     (dropdownType === 'branch' && formData.branchId === item._id) ||
@@ -418,7 +428,7 @@ export default function UserManagement() {
                     (dropdownType === 'filterStatus' && filterStatus === item._id) ||
                     (dropdownType === 'filterDept' && filterDept === item._id) ||
                     (dropdownType === 'filterBranch' && filterBranch === item._id)) && (
-                    <CheckCircle size={18} color="#adc6ff" />
+                    <CheckCircle size={18} color={isDarkMode ? "#adc6ff" : "#2573e6"} />
                   )}
                 </TouchableOpacity>
               )}
@@ -430,17 +440,17 @@ export default function UserManagement() {
       {/* Permissions Modal */}
       <Modal visible={permModalVisible} transparent animationType="slide">
         <View className="flex-1 justify-end bg-[#000000cc]">
-          <View className="bg-[#1c1b1b] border-t border-[#ffffff1a] rounded-t-2xl p-6 h-[90%]">
+          <View className={`border-t rounded-t-2xl p-6 h-[90%] ${bgCard} ${borderColor}`}>
             <View className="flex-row justify-between items-center mb-6">
                <View>
-                 <Text className="text-white text-lg font-bold tracking-widest uppercase">Edit Permissions</Text>
-                 <Text className="text-[#888] text-xs">User: {permUser?.name} • <Text className="capitalize">{formatRole(permUser?.globalRole)}</Text></Text>
+                 <Text className={`text-lg font-bold tracking-widest uppercase ${textColor}`}>Edit Permissions</Text>
+                 <Text className={`text-xs ${textMuted}`}>User: {permUser?.name} • <Text className="capitalize">{formatRole(permUser?.globalRole)}</Text></Text>
                </View>
-               <TouchableOpacity onPress={() => setPermModalVisible(false)}><X size={24} color="#888" /></TouchableOpacity>
+               <TouchableOpacity onPress={() => setPermModalVisible(false)}><X size={24} color={isDarkMode ? "#888" : "#555"} /></TouchableOpacity>
             </View>
             
-            <View className="flex-row border-b border-[#ffffff1a] py-2 mb-2">
-              <Text className="w-1/3 text-[#888] text-[10px] font-bold tracking-widest uppercase">MODULE NAME</Text>
+            <View className={`flex-row border-b py-2 mb-2 ${borderColor}`}>
+              <Text className={`w-1/3 text-[10px] font-bold tracking-widest uppercase ${textMuted}`}>MODULE NAME</Text>
               <Text className="w-[16%] text-[#10b981] text-[10px] font-bold tracking-widest uppercase text-center">CREATE</Text>
               <Text className="w-[16%] text-[#38bdf8] text-[10px] font-bold tracking-widest uppercase text-center">VIEW</Text>
               <Text className="w-[16%] text-[#f59e0b] text-[10px] font-bold tracking-widest uppercase text-center">EDIT</Text>
@@ -449,15 +459,15 @@ export default function UserManagement() {
 
             <ScrollView showsVerticalScrollIndicator={false}>
               {RESOURCES.map(res => (
-                <View key={res.key} className="flex-row items-center border-b border-[#ffffff1a] py-4">
-                   <Text className="w-1/3 text-white text-xs font-bold" numberOfLines={1}>{res.label}</Text>
+                <View key={res.key} className={`flex-row items-center border-b py-4 ${borderColor}`}>
+                   <Text className={`w-1/3 text-xs font-bold ${textColor}`} numberOfLines={1}>{res.label}</Text>
                    {['create', 'read', 'update', 'delete'].map((action, i) => {
                      const isEnabled = customPerms[res.key]?.[action] || false;
                      return (
                        <View key={action} className="w-[16%] items-center">
                          <TouchableOpacity 
                            onPress={() => togglePermission(res.key, action)}
-                           className={`w-10 h-5 rounded-full px-1 justify-center ${isEnabled ? 'bg-[#adc6ff]' : 'bg-[#333]'}`}
+                           className={`w-10 h-5 rounded-full px-1 justify-center ${isEnabled ? (isDarkMode ? 'bg-[#adc6ff]' : 'bg-[#2573e6]') : (isDarkMode ? 'bg-[#333]' : 'bg-gray-300')}`}
                          >
                             <View className={`w-3.5 h-3.5 rounded-full bg-white ${isEnabled ? 'self-end' : 'self-start'}`} />
                          </TouchableOpacity>
@@ -468,10 +478,10 @@ export default function UserManagement() {
               ))}
             </ScrollView>
 
-            <View className="flex-row justify-end pt-4 border-t border-[#ffffff1a] mt-2 pb-6">
-               <TouchableOpacity onPress={() => setPermModalVisible(false)} className="mr-4 py-3 px-4"><Text className="text-white font-bold text-sm uppercase">Cancel</Text></TouchableOpacity>
-               <TouchableOpacity onPress={handleSavePerms} disabled={savingPerms} className="bg-[#adc6ff] px-6 py-3 rounded-lg flex-row items-center">
-                  {savingPerms ? <ActivityIndicator size="small" color="#131313" /> : <Text className="text-[#131313] font-bold text-sm uppercase tracking-wider">Save Changes</Text>}
+            <View className={`flex-row justify-end pt-4 border-t mt-2 pb-6 ${borderColor}`}>
+               <TouchableOpacity onPress={() => setPermModalVisible(false)} className="mr-4 py-3 px-4"><Text className={`font-bold text-sm uppercase ${textColor}`}>Cancel</Text></TouchableOpacity>
+               <TouchableOpacity onPress={handleSavePerms} disabled={savingPerms} className={`px-6 py-3 rounded-lg flex-row items-center ${isDarkMode ? 'bg-[#adc6ff]' : 'bg-[#2573e6]'}`}>
+                  {savingPerms ? <ActivityIndicator size="small" color={isDarkMode ? "#131313" : "#ffffff"} /> : <Text className={`font-bold text-sm uppercase tracking-wider ${isDarkMode ? 'text-[#131313]' : 'text-white'}`}>Save Changes</Text>}
                </TouchableOpacity>
             </View>
           </View>

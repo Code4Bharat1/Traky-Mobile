@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Modal, TextInput, Alert, ScrollView } from 'react-native';
 import client from '../../api/client';
 import { GitBranch, MapPin, Plus, Edit2, Trash2, X, Phone, Mail, CheckCircle, XCircle, Search, ChevronDown, Users, Building2, Circle } from 'lucide-react-native';
+import useThemeStore from '../../store/themeStore';
 
 export default function BranchesScreen() {
+  const { isDarkMode } = useThemeStore();
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -122,65 +124,72 @@ export default function BranchesScreen() {
   const totalEmployees = branches.reduce((acc, b) => acc + (b.employeeCount || 0), 0);
 
   const stats = [
-    { label: "Total Branches", value: branches.length, icon: Building2, color: "#adc6ff" },
-    { label: "Active Branches", value: activeCount, icon: CheckCircle, color: "#47ff8a" },
+    { label: "Total Branches", value: branches.length, icon: Building2, color: isDarkMode ? "#adc6ff" : "#2573e6" },
+    { label: "Active Branches", value: activeCount, icon: CheckCircle, color: "#10b981" },
     { label: "Inactive Branches", value: inactiveCount, icon: XCircle, color: "#ff4747" },
     { label: "Total Employees", value: totalEmployees, icon: Users, color: "#47c8ff" },
   ];
+
+  const bgScreen = isDarkMode ? 'bg-[#131313]' : 'bg-gray-50';
+  const bgCard = isDarkMode ? 'bg-[#1c1b1b]' : 'bg-white';
+  const bgInput = isDarkMode ? 'bg-[#1c1b1b]' : 'bg-white';
+  const borderColor = isDarkMode ? 'border-[#ffffff1a]' : 'border-gray-200';
+  const textColor = isDarkMode ? 'text-white' : 'text-gray-900';
+  const textMuted = isDarkMode ? 'text-[#888]' : 'text-gray-500';
 
   const renderItem = ({ item }) => {
     const isActive = item.status === 'active';
     const locationParts = [item.location?.city, item.location?.state, item.location?.country].filter(Boolean).join(', ');
 
     return (
-      <View className="bg-[#1c1b1b] rounded-lg p-5 mb-4 border border-[#ffffff1a]">
+      <View className={`rounded-lg p-5 mb-4 border ${bgCard} ${borderColor}`}>
         <View className="flex-row justify-between items-start mb-3">
           <View className="flex-1">
-            <Text className="text-white text-base font-bold mb-1">{item.branchName}</Text>
-            <Text className="text-[#adc6ff] text-[10px] font-bold uppercase tracking-widest">{item.branchCode}</Text>
+            <Text className={`text-base font-bold mb-1 ${textColor}`}>{item.branchName}</Text>
+            <Text className={`text-[10px] font-bold uppercase tracking-widest ${isDarkMode ? 'text-[#adc6ff]' : 'text-[#2573e6]'}`}>{item.branchCode}</Text>
           </View>
           <View className="flex-row items-center ml-2">
             <TouchableOpacity onPress={() => openModal(item)} className="p-1.5 mr-1">
-              <Edit2 size={14} color="#888" />
+              <Edit2 size={14} color={isDarkMode ? "#888" : "#9ca3af"} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => handleDelete(item._id)} className="p-1.5">
-              <Trash2 size={14} color="#888" />
+              <Trash2 size={14} color={isDarkMode ? "#888" : "#9ca3af"} />
             </TouchableOpacity>
           </View>
         </View>
 
         <View className="mb-4">
           <View className="flex-row items-start mb-2">
-            <MapPin size={12} color="#888" className="mr-2 mt-0.5" />
-            <Text className="text-[#888] text-xs flex-1">
+            <MapPin size={12} color={isDarkMode ? "#888" : "#9ca3af"} className="mr-2 mt-0.5" />
+            <Text className={`text-xs flex-1 ${textMuted}`}>
               {item.location?.address ? `${item.location.address}${locationParts ? `, ${locationParts}` : ''}` : (locationParts || 'No location provided')}
             </Text>
           </View>
           {!!item.contactInfo?.phone && (
             <View className="flex-row items-center mb-2">
-              <Phone size={12} color="#888" className="mr-2" />
-              <Text className="text-[#888] text-xs">{item.contactInfo.phone}</Text>
+              <Phone size={12} color={isDarkMode ? "#888" : "#9ca3af"} className="mr-2" />
+              <Text className={`text-xs ${textMuted}`}>{item.contactInfo.phone}</Text>
             </View>
           )}
           {!!item.contactInfo?.email && (
             <View className="flex-row items-center">
-              <Mail size={12} color="#888" className="mr-2" />
-              <Text className="text-[#888] text-xs">{item.contactInfo.email}</Text>
+              <Mail size={12} color={isDarkMode ? "#888" : "#9ca3af"} className="mr-2" />
+              <Text className={`text-xs ${textMuted}`}>{item.contactInfo.email}</Text>
             </View>
           )}
         </View>
 
-        <View className="flex-row justify-between items-center pt-3 border-t border-[#ffffff1a]">
+        <View className={`flex-row justify-between items-center pt-3 border-t ${borderColor}`}>
           <View className="flex-row items-center">
-             <Circle size={8} color={isActive ? '#47ff8a' : '#ff4747'} fill={isActive ? '#47ff8a' : '#ff4747'} className="mr-2" />
-             <Text className="text-white text-[10px] font-bold tracking-widest uppercase">{isActive ? 'ACTIVE' : 'INACTIVE'}</Text>
+             <Circle size={8} color={isActive ? '#10b981' : '#ff4747'} fill={isActive ? '#10b981' : '#ff4747'} className="mr-2" />
+             <Text className={`text-[10px] font-bold tracking-widest uppercase ${textColor}`}>{isActive ? 'ACTIVE' : 'INACTIVE'}</Text>
           </View>
           <TouchableOpacity 
             onPress={() => Alert.alert("Switch Branch", `Switched to ${item.branchName}`)}
-            className="border border-[#ffffff1a] bg-[#131313] px-3 py-1.5 rounded flex-row items-center hover:bg-[#ffffff1a]"
+            className={`border px-3 py-1.5 rounded flex-row items-center ${isDarkMode ? 'bg-[#131313]' : 'bg-gray-50'} ${borderColor}`}
           >
-            <GitBranch size={12} color="#c2c6d6" className="mr-1" />
-            <Text className="text-[#c2c6d6] text-[10px] uppercase font-bold tracking-widest">Switch</Text>
+            <GitBranch size={12} color={isDarkMode ? "#c2c6d6" : "#4b5563"} className="mr-1" />
+            <Text className={`text-[10px] uppercase font-bold tracking-widest ${isDarkMode ? 'text-[#c2c6d6]' : 'text-gray-600'}`}>Switch</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -188,16 +197,16 @@ export default function BranchesScreen() {
   };
 
   return (
-    <View className="flex-1 bg-[#131313] p-4">
+    <View className={`flex-1 p-4 ${bgScreen}`}>
       {/* Header */}
       <View className="flex-row justify-between items-center mb-6 mt-4">
         <View>
-           <Text className="text-[#888] text-[10px] tracking-widest uppercase mb-1 font-bold">Admin / Branch Management</Text>
-           <Text className="text-white text-2xl font-bold tracking-wider">Branches</Text>
+           <Text className={`text-[10px] tracking-widest uppercase mb-1 font-bold ${textMuted}`}>Admin / Branch Management</Text>
+           <Text className={`text-2xl font-bold tracking-wider ${textColor}`}>Branches</Text>
         </View>
-        <TouchableOpacity onPress={() => openModal()} className="bg-[#adc6ff] flex-row items-center px-3 py-2 rounded">
-          <Plus size={16} color="#131313" className="mr-1" />
-          <Text className="text-[#131313] font-bold text-xs uppercase tracking-widest">Add Branch</Text>
+        <TouchableOpacity onPress={() => openModal()} className={`flex-row items-center px-3 py-2 rounded ${isDarkMode ? 'bg-[#adc6ff]' : 'bg-[#2573e6]'}`}>
+          <Plus size={16} color={isDarkMode ? "#131313" : "#ffffff"} className="mr-1" />
+          <Text className={`font-bold text-xs uppercase tracking-widest ${isDarkMode ? 'text-[#131313]' : 'text-white'}`}>Add Branch</Text>
         </TouchableOpacity>
       </View>
 
@@ -205,12 +214,12 @@ export default function BranchesScreen() {
       <View className="mb-6">
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {stats.map((s, i) => (
-            <View key={s.label} className={`bg-[#1c1b1b] border border-[#ffffff1a] p-4 rounded-lg w-36 ${i !== stats.length - 1 ? 'mr-3' : ''}`}>
+            <View key={s.label} className={`border p-4 rounded-lg w-36 ${bgCard} ${borderColor} ${i !== stats.length - 1 ? 'mr-3' : ''}`}>
                <View className="flex-row items-center mb-2">
                  <s.icon size={16} color={s.color} />
                </View>
-               <Text className="text-[#888] text-[10px] font-bold uppercase tracking-widest mb-1">{s.label}</Text>
-               <Text className="text-white text-2xl font-bold">{s.value}</Text>
+               <Text className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${textMuted}`}>{s.label}</Text>
+               <Text className={`text-2xl font-bold ${textColor}`}>{s.value}</Text>
             </View>
           ))}
         </ScrollView>
@@ -218,35 +227,35 @@ export default function BranchesScreen() {
 
       {/* Search and Filters */}
       <View className="flex-row justify-between items-center mb-4">
-         <View className="flex-1 bg-[#1c1b1b] border border-[#ffffff1a] rounded flex-row items-center px-3 h-10 mr-3">
-            <Search size={16} color="#888" className="mr-2" />
+         <View className={`flex-1 border rounded flex-row items-center px-3 h-10 mr-3 ${bgInput} ${borderColor}`}>
+            <Search size={16} color={isDarkMode ? "#888" : "#9ca3af"} className="mr-2" />
             <TextInput 
                value={searchQuery}
                onChangeText={setSearchQuery}
                placeholder="Search branches..."
-               placeholderTextColor="#888"
-               className="flex-1 text-white text-xs h-10"
+               placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"}
+               className={`flex-1 text-xs h-10 ${textColor}`}
             />
          </View>
          <TouchableOpacity 
             onPress={() => setFilterDropdownVisible(true)}
-            className="bg-[#1c1b1b] border border-[#ffffff1a] rounded px-3 h-10 flex-row items-center"
+            className={`border rounded px-3 h-10 flex-row items-center ${bgInput} ${borderColor}`}
          >
-            <Text className="text-[#c2c6d6] text-[10px] uppercase font-bold tracking-widest mr-2">
+            <Text className={`text-[10px] uppercase font-bold tracking-widest mr-2 ${isDarkMode ? 'text-[#c2c6d6]' : 'text-gray-600'}`}>
                {statusFilter === 'all' ? 'All Status' : statusFilter}
             </Text>
-            <ChevronDown size={14} color="#888" />
+            <ChevronDown size={14} color={isDarkMode ? "#888" : "#9ca3af"} />
          </TouchableOpacity>
       </View>
 
       <View className="mb-4">
-         <Text className="text-[#888] text-[10px] font-bold tracking-widest uppercase text-right">
+         <Text className={`text-[10px] font-bold tracking-widest uppercase text-right ${textMuted}`}>
             {filteredBranches.length} OF {branches.length} BRANCHES
          </Text>
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color="#adc6ff" className="mt-10" />
+        <ActivityIndicator size="large" color={isDarkMode ? "#adc6ff" : "#2573e6"} className="mt-10" />
       ) : (
         <FlatList 
           data={filteredBranches}
@@ -254,7 +263,7 @@ export default function BranchesScreen() {
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <Text className="text-[#888] text-center mt-10 text-xs font-bold uppercase tracking-widest">No branches found.</Text>
+            <Text className={`text-center mt-10 text-xs font-bold uppercase tracking-widest ${textMuted}`}>No branches found.</Text>
           }
         />
       )}
@@ -262,14 +271,14 @@ export default function BranchesScreen() {
       {/* Filter Dropdown Modal */}
       <Modal visible={filterDropdownVisible} transparent animationType="fade">
         <TouchableOpacity style={{flex: 1, backgroundColor: '#00000088'}} activeOpacity={1} onPress={() => setFilterDropdownVisible(false)}>
-          <View className="absolute top-48 right-4 bg-[#1c1b1b] border border-[#ffffff1a] rounded w-40">
+          <View className={`absolute top-48 right-4 border rounded w-40 ${bgCard} ${borderColor}`}>
              {['all', 'active', 'inactive'].map((status) => (
                 <TouchableOpacity 
                    key={status}
-                   className="p-4 border-b border-[#ffffff1a]"
+                   className={`p-4 border-b ${borderColor}`}
                    onPress={() => { setStatusFilter(status); setFilterDropdownVisible(false); }}
                 >
-                   <Text className="text-white text-[10px] font-bold uppercase tracking-widest">
+                   <Text className={`text-[10px] font-bold uppercase tracking-widest ${textColor}`}>
                      {status === 'all' ? 'All Status' : status}
                    </Text>
                 </TouchableOpacity>
@@ -281,85 +290,85 @@ export default function BranchesScreen() {
       {/* CRUD Modal */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View className="flex-1 justify-center items-center bg-[#000000cc]">
-          <View className="bg-[#1c1b1b] border border-[#ffffff1a] rounded-lg w-11/12 p-6 max-h-[80%]">
+          <View className={`border rounded-lg w-11/12 p-6 max-h-[80%] ${bgCard} ${borderColor}`}>
             <View className="flex-row justify-between items-center mb-6">
-               <Text className="text-white text-sm font-bold tracking-widest uppercase">{editingBranch ? 'Edit Branch' : 'Add Branch'}</Text>
-               <TouchableOpacity onPress={() => setModalVisible(false)}><X size={20} color="#888" /></TouchableOpacity>
+               <Text className={`text-sm font-bold tracking-widest uppercase ${textColor}`}>{editingBranch ? 'Edit Branch' : 'Add Branch'}</Text>
+               <TouchableOpacity onPress={() => setModalVisible(false)}><X size={20} color={isDarkMode ? "#888" : "#6b7280"} /></TouchableOpacity>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-               <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase">Branch Name *</Text>
-               <View className="border border-[#ffffff1a] bg-[#131313] rounded p-2 mb-4">
+               <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Branch Name *</Text>
+               <View className={`border rounded p-2 mb-4 ${isDarkMode ? 'bg-[#131313]' : 'bg-gray-50'} ${borderColor}`}>
                   <TextInput 
                     value={formData.branchName} 
                     onChangeText={v => setFormData({...formData, branchName: v})} 
                     placeholder="e.g. Headquarters" 
-                    placeholderTextColor="#888" 
-                    className="text-white text-sm py-1" 
+                    placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"} 
+                    className={`text-sm py-1 ${textColor}`} 
                   />
                </View>
 
-               <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase">Branch Code *</Text>
-               <View className="border border-[#ffffff1a] bg-[#131313] rounded p-2 mb-4">
+               <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Branch Code *</Text>
+               <View className={`border rounded p-2 mb-4 ${isDarkMode ? 'bg-[#131313]' : 'bg-gray-50'} ${borderColor}`}>
                   <TextInput 
                     value={formData.branchCode} 
                     onChangeText={v => setFormData({...formData, branchCode: v})} 
                     placeholder="e.g. HQ-01" 
-                    placeholderTextColor="#888" 
+                    placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"} 
                     autoCapitalize="characters"
-                    className="text-white text-sm py-1" 
+                    className={`text-sm py-1 ${textColor}`} 
                   />
                </View>
 
-               <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase">Status *</Text>
+               <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Status *</Text>
                <View className="flex-row mb-4">
                   <TouchableOpacity 
-                    className={`flex-1 py-2 items-center rounded-l border border-[#ffffff1a] ${formData.status === 'active' ? 'bg-[#47ff8a1a] border-[#47ff8a4d]' : 'bg-[#131313]'}`}
+                    className={`flex-1 py-2 items-center rounded-l border ${formData.status === 'active' ? (isDarkMode ? 'bg-[#10b9811a] border-[#10b9814d]' : 'bg-green-50 border-green-200') : (isDarkMode ? 'bg-[#131313]' : 'bg-gray-50')} ${borderColor}`}
                     onPress={() => setFormData({...formData, status: 'active'})}
                   >
-                     <Text className={`text-[10px] font-bold uppercase tracking-widest ${formData.status === 'active' ? 'text-[#47ff8a]' : 'text-[#888]'}`}>Active</Text>
+                     <Text className={`text-[10px] font-bold uppercase tracking-widest ${formData.status === 'active' ? 'text-[#10b981]' : (isDarkMode ? 'text-[#888]' : 'text-gray-500')}`}>Active</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
-                    className={`flex-1 py-2 items-center rounded-r border-t border-r border-b border-[#ffffff1a] ${formData.status === 'inactive' ? 'bg-[#ff47471a] border-[#ff47474d]' : 'bg-[#131313]'}`}
+                    className={`flex-1 py-2 items-center rounded-r border-t border-r border-b ${formData.status === 'inactive' ? (isDarkMode ? 'bg-[#ff47471a] border-[#ff47474d]' : 'bg-red-50 border-red-200') : (isDarkMode ? 'bg-[#131313]' : 'bg-gray-50')} ${borderColor}`}
                     onPress={() => setFormData({...formData, status: 'inactive'})}
                   >
-                     <Text className={`text-[10px] font-bold uppercase tracking-widest ${formData.status === 'inactive' ? 'text-[#ff4747]' : 'text-[#888]'}`}>Inactive</Text>
+                     <Text className={`text-[10px] font-bold uppercase tracking-widest ${formData.status === 'inactive' ? 'text-[#ff4747]' : (isDarkMode ? 'text-[#888]' : 'text-gray-500')}`}>Inactive</Text>
                   </TouchableOpacity>
                </View>
 
-               <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase mt-2">Address</Text>
-               <View className="border border-[#ffffff1a] bg-[#131313] rounded p-2 mb-4">
+               <Text className={`text-[10px] font-bold mb-2 uppercase mt-2 ${textMuted}`}>Address</Text>
+               <View className={`border rounded p-2 mb-4 ${isDarkMode ? 'bg-[#131313]' : 'bg-gray-50'} ${borderColor}`}>
                   <TextInput 
                     value={formData.address} 
                     onChangeText={v => setFormData({...formData, address: v})} 
                     placeholder="Street address" 
-                    placeholderTextColor="#888" 
-                    className="text-white text-sm py-1" 
+                    placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"} 
+                    className={`text-sm py-1 ${textColor}`} 
                   />
                </View>
 
                <View className="flex-row justify-between mb-4">
                  <View className="flex-1 mr-2">
-                    <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase">City</Text>
-                    <View className="border border-[#ffffff1a] bg-[#131313] rounded p-2">
+                    <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>City</Text>
+                    <View className={`border rounded p-2 ${isDarkMode ? 'bg-[#131313]' : 'bg-gray-50'} ${borderColor}`}>
                        <TextInput 
                          value={formData.city} 
                          onChangeText={v => setFormData({...formData, city: v})} 
                          placeholder="City" 
-                         placeholderTextColor="#888" 
-                         className="text-white text-sm py-1" 
+                         placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"} 
+                         className={`text-sm py-1 ${textColor}`} 
                        />
                     </View>
                  </View>
                  <View className="flex-1 ml-2">
-                    <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase">State</Text>
-                    <View className="border border-[#ffffff1a] bg-[#131313] rounded p-2">
+                    <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>State</Text>
+                    <View className={`border rounded p-2 ${isDarkMode ? 'bg-[#131313]' : 'bg-gray-50'} ${borderColor}`}>
                        <TextInput 
                          value={formData.state} 
                          onChangeText={v => setFormData({...formData, state: v})} 
                          placeholder="State" 
-                         placeholderTextColor="#888" 
-                         className="text-white text-sm py-1" 
+                         placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"} 
+                         className={`text-sm py-1 ${textColor}`} 
                        />
                     </View>
                  </View>
@@ -367,27 +376,27 @@ export default function BranchesScreen() {
                
                <View className="flex-row justify-between mb-4">
                  <View className="flex-1 mr-2">
-                    <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase">Country</Text>
-                    <View className="border border-[#ffffff1a] bg-[#131313] rounded p-2">
+                    <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Country</Text>
+                    <View className={`border rounded p-2 ${isDarkMode ? 'bg-[#131313]' : 'bg-gray-50'} ${borderColor}`}>
                        <TextInput 
                          value={formData.country} 
                          onChangeText={v => setFormData({...formData, country: v})} 
                          placeholder="Country" 
-                         placeholderTextColor="#888" 
-                         className="text-white text-sm py-1" 
+                         placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"} 
+                         className={`text-sm py-1 ${textColor}`} 
                        />
                     </View>
                  </View>
                  <View className="flex-1 ml-2">
-                    <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase">Pincode</Text>
-                    <View className="border border-[#ffffff1a] bg-[#131313] rounded p-2">
+                    <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Pincode</Text>
+                    <View className={`border rounded p-2 ${isDarkMode ? 'bg-[#131313]' : 'bg-gray-50'} ${borderColor}`}>
                        <TextInput 
                          value={formData.pincode} 
                          onChangeText={v => setFormData({...formData, pincode: v})} 
                          placeholder="Pincode" 
-                         placeholderTextColor="#888" 
+                         placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"} 
                          keyboardType="numeric"
-                         className="text-white text-sm py-1" 
+                         className={`text-sm py-1 ${textColor}`} 
                        />
                     </View>
                  </View>
@@ -395,52 +404,52 @@ export default function BranchesScreen() {
 
                <View className="flex-row justify-between mb-4">
                  <View className="flex-1 mr-2">
-                    <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase">Phone</Text>
-                    <View className="border border-[#ffffff1a] bg-[#131313] rounded p-2">
+                    <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Phone</Text>
+                    <View className={`border rounded p-2 ${isDarkMode ? 'bg-[#131313]' : 'bg-gray-50'} ${borderColor}`}>
                        <TextInput 
                          value={formData.phone} 
                          onChangeText={v => setFormData({...formData, phone: v})} 
                          placeholder="Phone No" 
-                         placeholderTextColor="#888" 
+                         placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"} 
                          keyboardType="phone-pad"
-                         className="text-white text-sm py-1" 
+                         className={`text-sm py-1 ${textColor}`} 
                        />
                     </View>
                  </View>
                  <View className="flex-1 ml-2">
-                    <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase">Email</Text>
-                    <View className="border border-[#ffffff1a] bg-[#131313] rounded p-2">
+                    <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Email</Text>
+                    <View className={`border rounded p-2 ${isDarkMode ? 'bg-[#131313]' : 'bg-gray-50'} ${borderColor}`}>
                        <TextInput 
                          value={formData.email} 
                          onChangeText={v => setFormData({...formData, email: v})} 
                          placeholder="Email ID" 
-                         placeholderTextColor="#888" 
+                         placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"} 
                          keyboardType="email-address"
-                         className="text-white text-sm py-1" 
+                         className={`text-sm py-1 ${textColor}`} 
                        />
                     </View>
                  </View>
                </View>
 
-               <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase mt-2">Description</Text>
-               <View className="border border-[#ffffff1a] bg-[#131313] rounded p-2 mb-6">
+               <Text className={`text-[10px] font-bold mb-2 uppercase mt-2 ${textMuted}`}>Description</Text>
+               <View className={`border rounded p-2 mb-6 ${isDarkMode ? 'bg-[#131313]' : 'bg-gray-50'} ${borderColor}`}>
                   <TextInput 
                     value={formData.description} 
                     onChangeText={v => setFormData({...formData, description: v})} 
                     placeholder="Enter description..." 
-                    placeholderTextColor="#888" 
+                    placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"} 
                     multiline
                     numberOfLines={3}
-                    className="text-white text-sm py-1 text-vertical-top" 
+                    className={`text-sm py-1 text-vertical-top ${textColor}`} 
                   />
                </View>
 
             </ScrollView>
 
-            <View className="flex-row justify-end pt-4 border-t border-[#ffffff1a] mt-2">
-               <TouchableOpacity onPress={() => setModalVisible(false)} className="mr-4 py-2"><Text className="text-[#888] font-bold text-xs uppercase">Cancel</Text></TouchableOpacity>
-               <TouchableOpacity onPress={handleSave} disabled={saving} className="bg-[#adc6ff] px-6 py-2 rounded flex-row items-center">
-                  {saving ? <ActivityIndicator size="small" color="#131313" /> : <Text className="text-[#131313] font-bold text-xs uppercase tracking-wider">Save</Text>}
+            <View className={`flex-row justify-end pt-4 border-t mt-2 ${borderColor}`}>
+               <TouchableOpacity onPress={() => setModalVisible(false)} className="mr-4 py-2"><Text className={`font-bold text-xs uppercase ${textMuted}`}>Cancel</Text></TouchableOpacity>
+               <TouchableOpacity onPress={handleSave} disabled={saving} className={`px-6 py-2 rounded flex-row items-center ${isDarkMode ? 'bg-[#adc6ff]' : 'bg-[#2573e6]'}`}>
+                  {saving ? <ActivityIndicator size="small" color={isDarkMode ? "#131313" : "#ffffff"} /> : <Text className={`font-bold text-xs uppercase tracking-wider ${isDarkMode ? 'text-[#131313]' : 'text-white'}`}>Save</Text>}
                </TouchableOpacity>
             </View>
           </View>

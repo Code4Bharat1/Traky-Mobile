@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Modal, ScrollView, Share, Alert } from 'react-native';
 import client from '../../api/client';
 import { ClipboardList, Clock, User, Search, ChevronDown, CheckCircle, X, Download, Bot, Folder } from 'lucide-react-native';
+import useThemeStore from '../../store/themeStore';
 
 export default function DailyLogsScreen() {
+  const { isDarkMode } = useThemeStore();
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -133,7 +135,6 @@ export default function DailyLogsScreen() {
     setDropdownVisible(false);
   };
 
-  // Flatten logs for granular display
   const getFlatEntries = () => {
     let flat = [];
     logs.forEach(log => {
@@ -165,7 +166,6 @@ export default function DailyLogsScreen() {
 
   const flatData = getFlatEntries();
 
-  // Unique users approx (counting from loaded logs)
   const uniqueUsers = new Set(logs.map(l => (typeof l.userId === 'object' ? l.userId._id : l.userId))).size;
 
   const [expandedLogId, setExpandedLogId] = useState(null);
@@ -197,20 +197,27 @@ export default function DailyLogsScreen() {
     );
   };
 
+  const bgScreen = isDarkMode ? 'bg-[#131313]' : 'bg-gray-50';
+  const bgCard = isDarkMode ? 'bg-[#1c1b1b]' : 'bg-white';
+  const bgInput = isDarkMode ? 'bg-[#1c1b1b]' : 'bg-white';
+  const borderColor = isDarkMode ? 'border-[#ffffff1a]' : 'border-gray-200';
+  const textColor = isDarkMode ? 'text-white' : 'text-gray-900';
+  const textMuted = isDarkMode ? 'text-[#888]' : 'text-gray-500';
+
   const renderItem = ({ item }) => {
     const isExpanded = expandedLogId === item._id;
     return (
-      <View className="bg-[#1c1b1b] rounded-lg p-5 mb-4 border border-[#ffffff1a]">
-        <View className="flex-row justify-between items-start mb-3 border-b border-[#ffffff1a] pb-3">
+      <View className={`rounded-lg p-5 mb-4 border ${bgCard} ${borderColor}`}>
+        <View className={`flex-row justify-between items-start mb-3 border-b pb-3 ${borderColor}`}>
           <View className="flex-row items-center flex-1 mr-2">
-            <View className="h-8 w-8 rounded bg-[#201f1f] items-center justify-center mr-3 border border-[#ffffff1a]">
-               <User size={14} color="#adc6ff" />
+            <View className={`h-8 w-8 rounded items-center justify-center mr-3 border ${isDarkMode ? 'bg-[#201f1f]' : 'bg-gray-100'} ${borderColor}`}>
+               <User size={14} color={isDarkMode ? "#adc6ff" : "#2573e6"} />
             </View>
-            <Text className="text-white text-sm font-bold flex-1" numberOfLines={1}>{item.userName}</Text>
+            <Text className={`text-sm font-bold flex-1 ${textColor}`} numberOfLines={1}>{item.userName}</Text>
           </View>
           <View className="flex-row items-center">
-            <Clock size={12} color="#888" className="mr-1" />
-            <Text className="text-[#888] text-[10px] font-bold uppercase tracking-widest">
+            <Clock size={12} color={isDarkMode ? "#888" : "#9ca3af"} className="mr-1" />
+            <Text className={`text-[10px] font-bold uppercase tracking-widest ${textMuted}`}>
               {item.logDate ? new Date(item.logDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No date'}
             </Text>
           </View>
@@ -218,21 +225,21 @@ export default function DailyLogsScreen() {
 
         <View className="mb-3">
            <View className="flex-row items-center mb-2">
-              <Folder size={12} color="#888" className="mr-1.5" />
-              <Text className="text-[#888] text-[10px] font-bold uppercase tracking-widest">{item.projectName}</Text>
+              <Folder size={12} color={isDarkMode ? "#888" : "#9ca3af"} className="mr-1.5" />
+              <Text className={`text-[10px] font-bold uppercase tracking-widest ${textMuted}`}>{item.projectName}</Text>
            </View>
-           <Text className="text-white text-sm font-bold mb-2">{item.taskTitle !== '—' ? item.taskTitle : 'General Log'}</Text>
+           <Text className={`text-sm font-bold mb-2 ${textColor}`}>{item.taskTitle !== '—' ? item.taskTitle : 'General Log'}</Text>
         </View>
 
-        <View className="flex-row items-center justify-between mt-2 pt-3 border-t border-[#ffffff1a]">
+        <View className={`flex-row items-center justify-between mt-2 pt-3 border-t ${borderColor}`}>
            <TouchableOpacity 
              onPress={() => toggleExpand(item._id)}
-             className="flex-row items-center bg-[#201f1f] px-3 py-1.5 rounded border border-[#ffffff1a]"
+             className={`flex-row items-center px-3 py-1.5 rounded border ${isDarkMode ? 'bg-[#201f1f]' : 'bg-blue-50'} ${borderColor}`}
            >
-             <Text className="text-[#adc6ff] text-[10px] font-bold uppercase tracking-widest mr-1">
+             <Text className={`text-[10px] font-bold uppercase tracking-widest mr-1 ${isDarkMode ? 'text-[#adc6ff]' : 'text-[#2573e6]'}`}>
                {isExpanded ? 'Hide View' : 'View'}
              </Text>
-             <ChevronDown size={14} color="#adc6ff" style={{ transform: [{ rotate: isExpanded ? '180deg' : '0deg' }] }} />
+             <ChevronDown size={14} color={isDarkMode ? "#adc6ff" : "#2573e6"} style={{ transform: [{ rotate: isExpanded ? '180deg' : '0deg' }] }} />
            </TouchableOpacity>
 
            <TouchableOpacity onPress={() => handleDelete(item.logId)} className="bg-[#3a1c1c] p-1.5 rounded border border-[#ef444433]">
@@ -241,9 +248,9 @@ export default function DailyLogsScreen() {
         </View>
 
         {isExpanded && item.description ? (
-           <View className="mt-3 pt-3 border-t border-[#ffffff1a]">
-              <Text className="text-[#888] text-[10px] font-bold uppercase tracking-widest mb-2">Log Details</Text>
-              <Text className="text-[#c2c6d6] text-xs leading-5">{item.description}</Text>
+           <View className={`mt-3 pt-3 border-t ${borderColor}`}>
+              <Text className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${textMuted}`}>Log Details</Text>
+              <Text className={`text-xs leading-5 ${isDarkMode ? 'text-[#c2c6d6]' : 'text-gray-600'}`}>{item.description}</Text>
            </View>
         ) : null}
       </View>
@@ -251,12 +258,12 @@ export default function DailyLogsScreen() {
   };
 
   return (
-    <View className="flex-1 bg-[#131313] p-4">
+    <View className={`flex-1 p-4 ${bgScreen}`}>
       {/* Header */}
       <View className="flex-row justify-between items-center mb-6 mt-4">
         <View>
-           <Text className="text-[#888] text-[10px] tracking-widest uppercase mb-1 font-bold">Admin / Daily Logs</Text>
-           <Text className="text-white text-2xl font-bold tracking-wider mb-1">Daily Work Logs</Text>
+           <Text className={`text-[10px] tracking-widest uppercase mb-1 font-bold ${textMuted}`}>Admin / Daily Logs</Text>
+           <Text className={`text-2xl font-bold tracking-wider mb-1 ${textColor}`}>Daily Work Logs</Text>
         </View>
       </View>
 
@@ -269,44 +276,44 @@ export default function DailyLogsScreen() {
             </TouchableOpacity>
          </View>
          <View className="flex-row items-center">
-            <View className="border border-[#ffffff1a] bg-[#1c1b1b] px-3 py-2 rounded items-center justify-center mr-2">
-               <Text className="text-[#888] text-[8px] font-bold uppercase tracking-widest mb-1">LOGS</Text>
-               <Text className="text-white font-bold text-sm">{totalLogs}</Text>
+            <View className={`border px-3 py-2 rounded items-center justify-center mr-2 ${bgCard} ${borderColor}`}>
+               <Text className={`text-[8px] font-bold uppercase tracking-widest mb-1 ${textMuted}`}>LOGS</Text>
+               <Text className={`font-bold text-sm ${textColor}`}>{totalLogs}</Text>
             </View>
-            <View className="border border-[#ffffff1a] bg-[#1c1b1b] px-3 py-2 rounded items-center justify-center">
-               <Text className="text-[#888] text-[8px] font-bold uppercase tracking-widest mb-1">USERS</Text>
-               <Text className="text-white font-bold text-sm">{uniqueUsers}</Text>
+            <View className={`border px-3 py-2 rounded items-center justify-center ${bgCard} ${borderColor}`}>
+               <Text className={`text-[8px] font-bold uppercase tracking-widest mb-1 ${textMuted}`}>USERS</Text>
+               <Text className={`font-bold text-sm ${textColor}`}>{uniqueUsers}</Text>
             </View>
          </View>
       </View>
 
       {/* Search and Filters */}
       <View className="mb-4">
-         <View className="flex-row items-center bg-[#1c1b1b] border border-[#ffffff1a] rounded px-3 h-10 mb-2">
-            <Search size={16} color="#888" className="mr-2" />
+         <View className={`border rounded px-3 h-10 mb-2 flex-row items-center ${bgInput} ${borderColor}`}>
+            <Search size={16} color={isDarkMode ? "#888" : "#9ca3af"} className="mr-2" />
             <TextInput 
                value={searchQuery}
                onChangeText={setSearchQuery}
                placeholder="Search employee, project, task..."
-               placeholderTextColor="#888"
-               className="flex-1 text-white text-xs h-10"
+               placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"}
+               className={`flex-1 text-xs h-10 ${textColor}`}
             />
          </View>
          <View className="flex-row justify-between items-center mb-2">
-            <TouchableOpacity onPress={() => { setDropdownType('project'); setDropdownVisible(true); }} className="flex-1 bg-[#1c1b1b] border border-[#ffffff1a] rounded px-3 h-10 flex-row items-center justify-between mr-2">
-              <Text className="text-white text-[10px] uppercase font-bold tracking-widest">{filterProject ? projects.find(p => p._id === filterProject)?.name?.substring(0,8) + '..' || 'Unknown' : 'All Projects'}</Text>
-              <ChevronDown size={14} color="#888" />
+            <TouchableOpacity onPress={() => { setDropdownType('project'); setDropdownVisible(true); }} className={`flex-1 border rounded px-3 h-10 flex-row items-center justify-between mr-2 ${bgInput} ${borderColor}`}>
+              <Text className={`text-[10px] uppercase font-bold tracking-widest ${textColor}`}>{filterProject ? projects.find(p => p._id === filterProject)?.name?.substring(0,8) + '..' || 'Unknown' : 'All Projects'}</Text>
+              <ChevronDown size={14} color={isDarkMode ? "#888" : "#9ca3af"} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => { setDropdownType('dept'); setDropdownVisible(true); }} className="flex-1 bg-[#1c1b1b] border border-[#ffffff1a] rounded px-3 h-10 flex-row items-center justify-between ml-2">
-              <Text className="text-white text-[10px] uppercase font-bold tracking-widest">{filterDept ? departments.find(d => d._id === filterDept)?.departmentName?.substring(0,8) + '..' || 'Unknown' : 'All Depts'}</Text>
-              <ChevronDown size={14} color="#888" />
+            <TouchableOpacity onPress={() => { setDropdownType('dept'); setDropdownVisible(true); }} className={`flex-1 border rounded px-3 h-10 flex-row items-center justify-between ml-2 ${bgInput} ${borderColor}`}>
+              <Text className={`text-[10px] uppercase font-bold tracking-widest ${textColor}`}>{filterDept ? departments.find(d => d._id === filterDept)?.departmentName?.substring(0,8) + '..' || 'Unknown' : 'All Depts'}</Text>
+              <ChevronDown size={14} color={isDarkMode ? "#888" : "#9ca3af"} />
             </TouchableOpacity>
          </View>
       </View>
 
       {/* List */}
       {loading ? (
-        <ActivityIndicator size="large" color="#adc6ff" className="mt-10" />
+        <ActivityIndicator size="large" color={isDarkMode ? "#adc6ff" : "#2573e6"} className="mt-10" />
       ) : (
         <FlatList 
           data={flatData}
@@ -315,13 +322,13 @@ export default function DailyLogsScreen() {
           showsVerticalScrollIndicator={false}
           onEndReached={loadMore}
           onEndReachedThreshold={0.5}
-          ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="#adc6ff" className="my-4" /> : null}
+          ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color={isDarkMode ? "#adc6ff" : "#2573e6"} className="my-4" /> : null}
           ListEmptyComponent={
-            <View className="items-center justify-center mt-10 p-6 border border-[#ffffff1a] bg-[#1c1b1b] rounded-lg">
-               <View className="h-12 w-12 rounded-full bg-[#201f1f] items-center justify-center mb-4">
-                 <ClipboardList size={24} color="#888" />
+            <View className={`items-center justify-center mt-10 p-6 border rounded-lg ${bgCard} ${borderColor}`}>
+               <View className={`h-12 w-12 rounded-full items-center justify-center mb-4 ${isDarkMode ? 'bg-[#201f1f]' : 'bg-gray-100'}`}>
+                 <ClipboardList size={24} color={isDarkMode ? "#888" : "#9ca3af"} />
                </View>
-               <Text className="text-[#888] text-[10px] font-bold uppercase tracking-widest">No logs found</Text>
+               <Text className={`text-[10px] font-bold uppercase tracking-widest ${textMuted}`}>No logs found</Text>
             </View>
           }
         />
@@ -330,7 +337,7 @@ export default function DailyLogsScreen() {
       {/* Dropdown Modal */}
       <Modal visible={dropdownVisible} transparent animationType="fade">
         <TouchableOpacity style={{flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center'}} onPress={() => setDropdownVisible(false)}>
-          <View className="bg-[#1c1b1b] border border-[#ffffff1a] rounded-lg w-5/6 max-h-[60%] p-2">
+          <View className={`border rounded-lg w-5/6 max-h-[60%] p-2 ${bgCard} ${borderColor}`}>
             <FlatList
               data={getDropdownOptions()}
               keyExtractor={(item) => item._id || 'none'}
@@ -340,9 +347,9 @@ export default function DailyLogsScreen() {
                 if (dropdownType === 'dept') isSelected = filterDept === item._id;
 
                 return (
-                  <TouchableOpacity className="py-4 px-4 border-b border-[#ffffff1a] flex-row items-center justify-between" onPress={() => selectDropdownItem(item)}>
-                    <Text className="text-white text-base capitalize">{item.name || item.projectName}</Text>
-                    {isSelected && <CheckCircle size={18} color="#adc6ff" />}
+                  <TouchableOpacity className={`py-4 px-4 border-b flex-row items-center justify-between ${borderColor}`} onPress={() => selectDropdownItem(item)}>
+                    <Text className={`text-base capitalize ${textColor}`}>{item.name || item.projectName}</Text>
+                    {isSelected && <CheckCircle size={18} color={isDarkMode ? "#adc6ff" : "#2573e6"} />}
                   </TouchableOpacity>
                 );
               }}
@@ -354,40 +361,40 @@ export default function DailyLogsScreen() {
       {/* AI Summary Modal */}
       <Modal visible={aiModalVisible} transparent animationType="slide">
         <View className="flex-1 justify-center items-center bg-[#000000cc] p-4">
-          <View className="bg-[#1c1b1b] border border-[#ffffff1a] rounded-xl w-full max-h-[85%] overflow-hidden">
-            <View className="flex-row justify-between items-center p-5 border-b border-[#ffffff1a]">
+          <View className={`border rounded-xl w-full max-h-[85%] overflow-hidden ${bgCard} ${borderColor}`}>
+            <View className={`flex-row justify-between items-center p-5 border-b ${borderColor}`}>
                <View>
-                 <Text className="text-[#888] text-[9px] font-bold uppercase tracking-widest mb-1">REPORT</Text>
-                 <Text className="text-white text-base font-bold">Daily Logs Summary</Text>
+                 <Text className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${textMuted}`}>REPORT</Text>
+                 <Text className={`text-base font-bold ${textColor}`}>Daily Logs Summary</Text>
                </View>
-               <TouchableOpacity onPress={() => setAiModalVisible(false)}><X size={20} color="#888" /></TouchableOpacity>
+               <TouchableOpacity onPress={() => setAiModalVisible(false)}><X size={20} color={isDarkMode ? "#888" : "#6b7280"} /></TouchableOpacity>
             </View>
 
             <ScrollView className="p-5" showsVerticalScrollIndicator={false}>
                {generatingAi ? (
                   <View className="items-center py-10">
                      <ActivityIndicator size="large" color="#f472b6" className="mb-4" />
-                     <Text className="text-[#888] text-xs uppercase tracking-widest font-bold">Generating AI Summary...</Text>
+                     <Text className={`text-xs uppercase tracking-widest font-bold ${textMuted}`}>Generating AI Summary...</Text>
                   </View>
                ) : (
-                  <Text className="text-white text-sm leading-6 mb-6">{aiSummary}</Text>
+                  <Text className={`text-sm leading-6 mb-6 ${textColor}`}>{aiSummary}</Text>
                )}
             </ScrollView>
 
-            <View className="p-5 border-t border-[#ffffff1a] flex-row">
+            <View className={`p-5 border-t flex-row ${borderColor}`}>
                <TouchableOpacity 
                   disabled={generatingAi || !aiSummary}
                   onPress={handleDownload} 
-                  className="flex-1 bg-[#adc6ff] p-3 rounded flex-row items-center justify-center mr-3 opacity-90 disabled:opacity-50"
+                  className={`flex-1 p-3 rounded flex-row items-center justify-center mr-3 opacity-90 disabled:opacity-50 ${isDarkMode ? 'bg-[#adc6ff]' : 'bg-[#2573e6]'}`}
                >
-                  <Download size={14} color="#131313" className="mr-2" />
-                  <Text className="text-[#131313] font-bold text-xs uppercase tracking-widest">DOWNLOAD</Text>
+                  <Download size={14} color={isDarkMode ? "#131313" : "#ffffff"} className="mr-2" />
+                  <Text className={`font-bold text-xs uppercase tracking-widest ${isDarkMode ? 'text-[#131313]' : 'text-white'}`}>DOWNLOAD</Text>
                </TouchableOpacity>
                <TouchableOpacity 
                   onPress={() => setAiModalVisible(false)} 
-                  className="bg-[#201f1f] border border-[#ffffff1a] p-3 rounded items-center justify-center px-6"
+                  className={`border p-3 rounded items-center justify-center px-6 ${isDarkMode ? 'bg-[#201f1f]' : 'bg-gray-100'} ${borderColor}`}
                >
-                  <Text className="text-white font-bold text-xs uppercase tracking-widest">CLOSE</Text>
+                  <Text className={`font-bold text-xs uppercase tracking-widest ${textColor}`}>CLOSE</Text>
                </TouchableOpacity>
             </View>
           </View>

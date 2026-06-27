@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Modal, TextInput, Alert, ScrollView } from 'react-native';
 import client from '../../api/client';
 import { Plus, Edit2, Trash2, X, ChevronDown, CheckCircle, Search, FileText, Bookmark } from 'lucide-react-native';
+import useThemeStore from '../../store/themeStore';
 
 export default function TaskTemplatesScreen() {
+  const { isDarkMode } = useThemeStore();
   const [templates, setTemplates] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -109,24 +111,31 @@ export default function TaskTemplatesScreen() {
     return true;
   });
 
+  const bgScreen = isDarkMode ? 'bg-[#131313]' : 'bg-gray-50';
+  const bgCard = isDarkMode ? 'bg-[#1c1b1b]' : 'bg-white';
+  const bgInput = isDarkMode ? 'bg-[#1c1b1b]' : 'bg-white';
+  const borderColor = isDarkMode ? 'border-[#ffffff1a]' : 'border-gray-200';
+  const textColor = isDarkMode ? 'text-white' : 'text-gray-900';
+  const textMuted = isDarkMode ? 'text-[#888]' : 'text-gray-500';
+
   const renderItem = ({ item }) => (
-    <TouchableOpacity onPress={() => openModal(item)} className="bg-[#1c1b1b] rounded-xl p-5 mb-4 border border-[#ffffff1a] w-[48%] mx-[1%]">
+    <TouchableOpacity onPress={() => openModal(item)} className={`rounded-xl p-5 mb-4 border w-[48%] mx-[1%] ${bgCard} ${borderColor}`}>
       <View className="flex-row justify-between items-start mb-4">
         <View className="flex-row items-center flex-1 mr-2">
-          <View className="h-10 w-10 rounded-lg bg-[#201f1f] items-center justify-center border border-[#ffffff1a] mr-3">
-            <FileText size={18} color="#adc6ff" />
+          <View className={`h-10 w-10 rounded-lg items-center justify-center border mr-3 ${isDarkMode ? 'bg-[#201f1f]' : 'bg-gray-50'} ${borderColor}`}>
+            <FileText size={18} color={isDarkMode ? "#adc6ff" : "#2573e6"} />
           </View>
           <View className="flex-1">
-            <Text className="text-white text-xs font-bold uppercase tracking-wider mb-0.5" numberOfLines={1}>{item.templateName || 'Unnamed'}</Text>
-            <Text className="text-[#888] text-[9px] uppercase tracking-widest font-bold">{item.priority || 'MEDIUM'} PRIORITY</Text>
+            <Text className={`text-xs font-bold uppercase tracking-wider mb-0.5 ${textColor}`} numberOfLines={1}>{item.templateName || 'Unnamed'}</Text>
+            <Text className={`text-[9px] uppercase tracking-widest font-bold ${textMuted}`}>{item.priority || 'MEDIUM'} PRIORITY</Text>
           </View>
         </View>
         <TouchableOpacity onPress={() => handleDelete(item._id)} className="p-1">
-          <Trash2 size={14} color="#888" />
+          <Trash2 size={14} color={isDarkMode ? "#888" : "#9ca3af"} />
         </TouchableOpacity>
       </View>
       
-      <Text className="text-white text-xs uppercase font-bold tracking-wider mb-6" numberOfLines={2}>{item.title || item.templateName}</Text>
+      <Text className={`text-xs uppercase font-bold tracking-wider mb-6 ${textColor}`} numberOfLines={2}>{item.title || item.templateName}</Text>
       
       <View className="flex-row items-center mt-auto">
          <View className="flex-row items-center bg-[#f59e0b1a] px-2 py-1 rounded border border-[#f59e0b4a]">
@@ -138,34 +147,34 @@ export default function TaskTemplatesScreen() {
   );
 
   return (
-    <View className="flex-1 bg-[#131313] p-4">
+    <View className={`flex-1 p-4 ${bgScreen}`}>
       {/* Header */}
       <View className="flex-row justify-between items-center mb-6 mt-4">
         <View>
-           <Text className="text-white text-2xl font-bold tracking-wider mb-1">TASK TEMPLATES</Text>
-           <Text className="text-[#888] text-xs">Manage all company task templates</Text>
+           <Text className={`text-2xl font-bold tracking-wider mb-1 ${textColor}`}>TASK TEMPLATES</Text>
+           <Text className={`text-xs ${textMuted}`}>Manage all company task templates</Text>
         </View>
-        <TouchableOpacity onPress={() => openModal()} className="bg-[#adc6ff] p-3 rounded-full">
-          <Plus size={20} color="#131313" />
+        <TouchableOpacity onPress={() => openModal()} className={`p-3 rounded-full ${isDarkMode ? 'bg-[#adc6ff]' : 'bg-[#2573e6]'}`}>
+          <Plus size={20} color={isDarkMode ? "#131313" : "#ffffff"} />
         </TouchableOpacity>
       </View>
 
       {/* Search */}
       <View className="mb-6">
-         <View className="flex-row items-center bg-[#1c1b1b] border border-[#ffffff1a] rounded px-3 h-10">
-            <Search size={16} color="#888" className="mr-2" />
+         <View className={`border rounded px-3 h-10 flex-row items-center ${bgInput} ${borderColor}`}>
+            <Search size={16} color={isDarkMode ? "#888" : "#9ca3af"} className="mr-2" />
             <TextInput 
                value={searchQuery}
                onChangeText={setSearchQuery}
                placeholder="Search templates..."
-               placeholderTextColor="#888"
-               className="flex-1 text-white text-xs h-10"
+               placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"}
+               className={`flex-1 text-xs h-10 ${textColor}`}
             />
          </View>
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color="#adc6ff" className="mt-10" />
+        <ActivityIndicator size="large" color={isDarkMode ? "#adc6ff" : "#2573e6"} className="mt-10" />
       ) : (
         <FlatList 
           data={filteredTemplates}
@@ -176,7 +185,7 @@ export default function TaskTemplatesScreen() {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View className="items-center justify-center mt-10 p-6">
-               <Text className="text-[#888] text-xs">No templates found.</Text>
+               <Text className={`text-xs ${textMuted}`}>No templates found.</Text>
             </View>
           }
         />
@@ -185,85 +194,85 @@ export default function TaskTemplatesScreen() {
       {/* CRUD Modal */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View className="flex-1 justify-end bg-[#000000cc]">
-          <View className="bg-[#1c1b1b] border-t border-[#ffffff1a] rounded-t-2xl p-6 h-[85%]">
+          <View className={`border-t rounded-t-2xl p-6 h-[85%] ${bgCard} ${borderColor}`}>
             <View className="flex-row justify-between items-center mb-6">
-               <Text className="text-white text-lg font-bold tracking-widest uppercase">{editingTemplate ? 'Edit Template' : 'Create Template'}</Text>
-               <TouchableOpacity onPress={() => setModalVisible(false)}><X size={24} color="#888" /></TouchableOpacity>
+               <Text className={`text-lg font-bold tracking-widest uppercase ${textColor}`}>{editingTemplate ? 'Edit Template' : 'Create Template'}</Text>
+               <TouchableOpacity onPress={() => setModalVisible(false)}><X size={24} color={isDarkMode ? "#888" : "#6b7280"} /></TouchableOpacity>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase">Template Name *</Text>
-              <View className="border border-[#ffffff1a] bg-[#131313] rounded p-3 mb-4">
+              <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Template Name *</Text>
+              <View className={`border rounded p-3 mb-4 ${isDarkMode ? 'bg-[#131313]' : 'bg-gray-50'} ${borderColor}`}>
                  <TextInput 
                    value={formData.templateName} 
                    onChangeText={v => setFormData({...formData, templateName: v})} 
                    placeholder="e.g. Daily Standup Prep" 
-                   placeholderTextColor="#888" 
-                   className="text-white text-base py-1" 
+                   placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"} 
+                   className={`text-base py-1 ${textColor}`} 
                  />
               </View>
 
-              <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase">Task Title *</Text>
-              <View className="border border-[#ffffff1a] bg-[#131313] rounded p-3 mb-4">
+              <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Task Title *</Text>
+              <View className={`border rounded p-3 mb-4 ${isDarkMode ? 'bg-[#131313]' : 'bg-gray-50'} ${borderColor}`}>
                  <TextInput 
                    value={formData.title} 
                    onChangeText={v => setFormData({...formData, title: v})} 
                    placeholder="e.g. Prepare standup notes" 
-                   placeholderTextColor="#888" 
-                   className="text-white text-base py-1" 
+                   placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"} 
+                   className={`text-base py-1 ${textColor}`} 
                  />
               </View>
 
-              <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase">Description</Text>
-              <View className="border border-[#ffffff1a] bg-[#131313] rounded p-3 mb-4">
+              <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Description</Text>
+              <View className={`border rounded p-3 mb-4 ${isDarkMode ? 'bg-[#131313]' : 'bg-gray-50'} ${borderColor}`}>
                  <TextInput 
                    value={formData.description} 
                    onChangeText={v => setFormData({...formData, description: v})} 
                    placeholder="Task description..." 
-                   placeholderTextColor="#888" 
+                   placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"} 
                    multiline numberOfLines={3}
-                   className="text-white text-base py-1 min-h-[60px]" 
+                   className={`text-base py-1 min-h-[60px] ${textColor}`} 
                    textAlignVertical="top"
                  />
               </View>
 
               <View className="flex-row justify-between mb-4">
                 <View className="flex-1 mr-2">
-                  <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase">Points</Text>
-                  <View className="border border-[#ffffff1a] bg-[#131313] rounded p-3">
+                  <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Points</Text>
+                  <View className={`border rounded p-3 ${isDarkMode ? 'bg-[#131313]' : 'bg-gray-50'} ${borderColor}`}>
                      <TextInput 
                        value={formData.points} 
                        onChangeText={v => setFormData({...formData, points: v})} 
                        keyboardType="numeric"
-                       className="text-white text-base py-1" 
+                       className={`text-base py-1 ${textColor}`} 
                      />
                   </View>
                 </View>
                 <View className="flex-1 ml-2">
-                  <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase">Priority</Text>
-                  <View className="flex-row justify-between border border-[#ffffff1a] bg-[#131313] rounded p-1">
+                  <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Priority</Text>
+                  <View className={`flex-row justify-between border rounded p-1 ${isDarkMode ? 'bg-[#131313]' : 'bg-gray-50'} ${borderColor}`}>
                     {['LOW', 'MEDIUM', 'HIGH'].map(p => (
-                      <TouchableOpacity key={p} onPress={() => setFormData({...formData, priority: p})} className={`flex-1 py-2 items-center rounded ${formData.priority === p ? 'bg-[#adc6ff]' : ''}`}>
-                        <Text className={`text-[10px] font-bold ${formData.priority === p ? 'text-[#131313]' : 'text-white'}`}>{p[0]}</Text>
+                      <TouchableOpacity key={p} onPress={() => setFormData({...formData, priority: p})} className={`flex-1 py-2 items-center rounded ${formData.priority === p ? (isDarkMode ? 'bg-[#adc6ff]' : 'bg-[#2573e6]') : ''}`}>
+                        <Text className={`text-[10px] font-bold ${formData.priority === p ? (isDarkMode ? 'text-[#131313]' : 'text-white') : textColor}`}>{p[0]}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                 </View>
               </View>
 
-              <Text className="text-[#888] text-[10px] font-bold mb-2 uppercase">Department (Optional)</Text>
-              <TouchableOpacity onPress={() => setDropdownVisible(true)} className="border border-[#ffffff1a] bg-[#131313] rounded p-4 mb-8 flex-row justify-between items-center">
-                 <Text className={formData.departmentId ? "text-white text-base capitalize" : "text-[#888] text-base"}>
+              <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Department (Optional)</Text>
+              <TouchableOpacity onPress={() => setDropdownVisible(true)} className={`border rounded p-4 mb-8 flex-row justify-between items-center ${isDarkMode ? 'bg-[#131313]' : 'bg-gray-50'} ${borderColor}`}>
+                 <Text className={formData.departmentId ? `text-base capitalize ${textColor}` : `text-base ${textMuted}`}>
                    {formData.departmentId ? departments.find(d => d._id === formData.departmentId)?.departmentName || 'Unknown' : 'Select a department'}
                  </Text>
-                 <ChevronDown size={20} color="#888" />
+                 <ChevronDown size={20} color={isDarkMode ? "#888" : "#9ca3af"} />
               </TouchableOpacity>
             </ScrollView>
 
-            <View className="flex-row justify-end pt-4 border-t border-[#ffffff1a] mt-2 pb-6">
-               <TouchableOpacity onPress={() => setModalVisible(false)} className="mr-4 py-3 px-4"><Text className="text-white font-bold text-sm uppercase">Cancel</Text></TouchableOpacity>
-               <TouchableOpacity onPress={handleSave} disabled={saving} className="bg-[#adc6ff] px-6 py-3 rounded-lg flex-row items-center">
-                  {saving ? <ActivityIndicator size="small" color="#131313" /> : <Text className="text-[#131313] font-bold text-sm uppercase tracking-wider">Save Template</Text>}
+            <View className={`flex-row justify-end pt-4 border-t mt-2 pb-6 ${borderColor}`}>
+               <TouchableOpacity onPress={() => setModalVisible(false)} className="mr-4 py-3 px-4"><Text className={`font-bold text-sm uppercase ${textColor}`}>Cancel</Text></TouchableOpacity>
+               <TouchableOpacity onPress={handleSave} disabled={saving} className={`px-6 py-3 rounded-lg flex-row items-center ${isDarkMode ? 'bg-[#adc6ff]' : 'bg-[#2573e6]'}`}>
+                  {saving ? <ActivityIndicator size="small" color={isDarkMode ? "#131313" : "#ffffff"} /> : <Text className={`font-bold text-sm uppercase tracking-wider ${isDarkMode ? 'text-[#131313]' : 'text-white'}`}>Save Template</Text>}
                </TouchableOpacity>
             </View>
           </View>
@@ -273,14 +282,14 @@ export default function TaskTemplatesScreen() {
       {/* Dropdown Modal */}
       <Modal visible={dropdownVisible} transparent animationType="fade">
         <TouchableOpacity style={{flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center'}} onPress={() => setDropdownVisible(false)}>
-          <View className="bg-[#1c1b1b] border border-[#ffffff1a] rounded-lg w-5/6 max-h-[60%] p-2">
+          <View className={`border rounded-lg w-5/6 max-h-[60%] p-2 ${bgCard} ${borderColor}`}>
             <FlatList
               data={[{_id: '', departmentName: 'No Department'}, ...departments]}
               keyExtractor={(item) => item._id || 'none'}
               renderItem={({item}) => (
-               <TouchableOpacity className="py-4 px-4 border-b border-[#ffffff1a] flex-row items-center justify-between" onPress={() => { setFormData({...formData, departmentId: item._id}); setDropdownVisible(false); }}>
-                  <Text className="text-white text-base capitalize">{item.departmentName}</Text>
-                  {formData.departmentId === item._id && <CheckCircle size={18} color="#adc6ff" />}
+               <TouchableOpacity className={`py-4 px-4 border-b flex-row items-center justify-between ${borderColor}`} onPress={() => { setFormData({...formData, departmentId: item._id}); setDropdownVisible(false); }}>
+                  <Text className={`text-base capitalize ${textColor}`}>{item.departmentName}</Text>
+                  {formData.departmentId === item._id && <CheckCircle size={18} color={isDarkMode ? "#adc6ff" : "#2573e6"} />}
                </TouchableOpacity>
               )}
             />

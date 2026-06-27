@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { LayoutDashboard, CheckSquare, ClipboardList, Trophy, Settings } from 'lucide-react-native';
+import useThemeStore from '../store/themeStore';
 
 import AdminDashboard from '../screens/Admin/AdminDashboard';
 import TasksScreen from '../screens/Admin/TasksScreen';
@@ -11,19 +12,21 @@ import SettingsScreen from '../screens/Admin/SettingsScreen';
 const Tab = createBottomTabNavigator();
 
 export default function AdminTabNavigator() {
+  const { isDarkMode } = useThemeStore();
+
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#131313',
-          borderTopColor: '#ffffff1a',
+          backgroundColor: isDarkMode ? '#131313' : '#ffffff',
+          borderTopColor: isDarkMode ? '#ffffff1a' : '#e5e7eb',
           height: 60,
           paddingBottom: 8,
           paddingTop: 8,
         },
-        tabBarActiveTintColor: '#adc6ff',
-        tabBarInactiveTintColor: '#888',
+        tabBarActiveTintColor: isDarkMode ? '#adc6ff' : '#2573e6',
+        tabBarInactiveTintColor: isDarkMode ? '#888' : '#6b7280',
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: 'bold',
