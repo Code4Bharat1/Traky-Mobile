@@ -353,7 +353,7 @@ export default function ActivityLogs() {
         <View className="flex-1 mt-2">
           <FlatList 
             data={filteredLogs}
-            keyExtractor={(item) => item._id}
+            keyExtractor={(item, index) => item._id ? item._id + '_' + index : index.toString()}
             renderItem={renderItem}
             showsVerticalScrollIndicator={true}
             ListFooterComponent={renderFooter}

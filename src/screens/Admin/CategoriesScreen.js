@@ -159,7 +159,7 @@ export default function CategoriesScreen() {
       ) : (
         <FlatList 
           data={safeCategories}
-          keyExtractor={(item) => item._id}
+          keyExtractor={(item, index) => item._id ? item._id + '_' + index : index.toString()}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={

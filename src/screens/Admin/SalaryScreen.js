@@ -28,17 +28,21 @@ const SalaryCard = React.memo(({ item, isDarkMode, openModal, bgCard, bgInputAlt
         </View>
       </View>
 
-      <View className={`flex-row justify-between items-center py-3 border-y mb-3 ${borderColor}`}>
-        <View>
-          <Text className={`text-[10px] uppercase tracking-widest ${textMuted}`}>Base Salary</Text>
+      <View className={`flex-row items-center py-3 border-y mb-3 ${borderColor}`}>
+        <View className={`flex-1 items-center border-r ${borderColor}`}>
+          <Text className={`text-[9px] uppercase tracking-widest ${textMuted}`}>Points</Text>
+          <Text className={`text-xs font-bold ${textColor}`}>{item.totalPointsForSalary || item.totalPoints || item.points || 0}</Text>
+        </View>
+        <View className={`flex-1 items-center border-r ${borderColor}`}>
+          <Text className={`text-[9px] uppercase tracking-widest ${textMuted}`}>Rate</Text>
+          <Text className={`text-xs font-bold ${textColor}`}>₹{item.pointToRupeeConversion || item.rate || 0}</Text>
+        </View>
+        <View className={`flex-1 items-center border-r ${borderColor}`}>
+          <Text className={`text-[9px] uppercase tracking-widest ${textMuted}`}>Base</Text>
           <Text className={`text-xs font-bold ${textColor}`}>₹{item.baseSalary || 0}</Text>
         </View>
-        <View className="items-center">
-          <Text className={`text-[10px] uppercase tracking-widest ${textMuted}`}>Points / Rate</Text>
-          <Text className={`text-xs font-bold ${textColor}`}>{item.totalPointsForSalary || item.totalPoints || item.points || 0} @ ₹{item.pointToRupeeConversion || item.rate || 0}</Text>
-        </View>
-        <View className="items-end">
-          <Text className={`text-[10px] uppercase tracking-widest ${textMuted}`}>Final Salary</Text>
+        <View className="flex-1 items-center">
+          <Text className={`text-[9px] uppercase tracking-widest ${textMuted}`}>Final</Text>
           <Text className={`text-sm font-bold ${isDarkMode ? 'text-[#10b981]' : 'text-green-600'}`}>₹{item.finalSalary || item.finalAmount || item.amount || 0}</Text>
         </View>
       </View>

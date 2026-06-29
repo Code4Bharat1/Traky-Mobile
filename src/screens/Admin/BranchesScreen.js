@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Modal, TextInput, Alert, ScrollView } from 'react-native';
 import client from '../../api/client';
-import { GitBranch, MapPin, Plus, Edit2, Trash2, X, Phone, Mail, CheckCircle, XCircle, Search, ChevronDown, Users, Building2, Circle } from 'lucide-react-native';
+import { GitBranch, MapPin, Plus, Edit2, Trash2, X, Phone, Mail, CheckCircle, XCircle, Search, ChevronDown, Users, Building2, Circle, CheckCircle2 } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
+import useBranchStore from '../../store/branchStore';
 
 export default function BranchesScreen() {
   const { isDarkMode } = useThemeStore();
+  const { activeBranchId, switchBranch, initBranch } = useBranchStore();
   const [branches, setBranches] = useState([]);
+  const [statsData, setStatsData] = useState({ totalEmployees: 0 });
   const [loading, setLoading] = useState(true);
   
   // Filtering & Search
@@ -23,8 +26,16 @@ export default function BranchesScreen() {
   const fetchBranches = async () => {
     try {
       setLoading(true);
-      const response = await client.get('/branches');
-      setBranches(response.data.data || response.data || []);
+      const [bRes, sRes] = await Promise.allSettled([
+        client.get('/branches'),
+        client.get('/branches/stats')
+      ]);
+      const fetchedBranches = bRes.status === 'fulfilled' ? (bRes.value.data?.data || bRes.value.data || []) : [];
+      setBranches(fetchedBranches);
+      if (sRes.status === 'fulfilled') {
+        setStatsData(sRes.value.data?.data || sRes.value.data || { totalEmployees: 0 });
+      }
+      initBranch(fetchedBranches);
     } catch (error) {
       console.error("Failed to load branches", error);
     } finally {
@@ -121,7 +132,7 @@ export default function BranchesScreen() {
 
   const activeCount = branches.filter(b => b.status === 'active').length;
   const inactiveCount = branches.filter(b => b.status === 'inactive').length;
-  const totalEmployees = branches.reduce((acc, b) => acc + (b.employeeCount || 0), 0);
+  const totalEmployees = statsData.totalEmployees || 0;
 
   const stats = [
     { label: "Total Branches", value: branches.length, icon: Building2, color: isDarkMode ? "#adc6ff" : "#2573e6" },
@@ -138,14 +149,21 @@ export default function BranchesScreen() {
   const textMuted = isDarkMode ? 'text-[#888]' : 'text-gray-500';
 
   const renderItem = ({ item }) => {
-    const isActive = item.status === 'active';
+    const isActiveStatus = item.status === 'active';
     const locationParts = [item.location?.city, item.location?.state, item.location?.country].filter(Boolean).join(', ');
+    const isSelectedView = activeBranchId === item._id;
 
     return (
-      <View className={`rounded-lg p-5 mb-4 border ${bgCard} ${borderColor}`}>
-        <View className="flex-row justify-between items-start mb-3">
+      <View className={`rounded-lg p-5 mb-4 border relative ${isSelectedView ? (isDarkMode ? 'border-[#adc6ff80] bg-[#2573e61a]' : 'border-blue-300 bg-blue-50') : `${bgCard} ${borderColor}`}`}>
+        {isSelectedView && (
+           <View className="absolute top-3 right-3 flex-row items-center px-2 py-0.5 rounded bg-[#2573e6]">
+              <CheckCircle2 size={10} color="#fff" className="mr-1" />
+              <Text className="text-[9px] uppercase font-bold tracking-widest text-white">Active View</Text>
+           </View>
+        )}
+        <View className={`flex-row justify-between items-start mb-3 ${isSelectedView ? 'pr-20' : ''}`}>
           <View className="flex-1">
-            <Text className={`text-base font-bold mb-1 ${textColor}`}>{item.branchName}</Text>
+            <Text className={`text-base font-bold mb-1 ${isSelectedView ? (isDarkMode ? 'text-[#adc6ff]' : 'text-[#2573e6]') : textColor}`}>{item.branchName}</Text>
             <Text className={`text-[10px] font-bold uppercase tracking-widest ${isDarkMode ? 'text-[#adc6ff]' : 'text-[#2573e6]'}`}>{item.branchCode}</Text>
           </View>
           <View className="flex-row items-center ml-2">
@@ -181,16 +199,27 @@ export default function BranchesScreen() {
 
         <View className={`flex-row justify-between items-center pt-3 border-t ${borderColor}`}>
           <View className="flex-row items-center">
-             <Circle size={8} color={isActive ? '#10b981' : '#ff4747'} fill={isActive ? '#10b981' : '#ff4747'} className="mr-2" />
-             <Text className={`text-[10px] font-bold tracking-widest uppercase ${textColor}`}>{isActive ? 'ACTIVE' : 'INACTIVE'}</Text>
+             <Circle size={8} color={isActiveStatus ? '#10b981' : '#ff4747'} fill={isActiveStatus ? '#10b981' : '#ff4747'} className="mr-2" />
+             <Text className={`text-[10px] font-bold tracking-widest uppercase ${textColor}`}>{isActiveStatus ? 'ACTIVE' : 'INACTIVE'}</Text>
           </View>
-          <TouchableOpacity 
-            onPress={() => Alert.alert("Switch Branch", `Switched to ${item.branchName}`)}
-            className={`border px-3 py-1.5 rounded flex-row items-center ${isDarkMode ? 'bg-[#131313]' : 'bg-gray-50'} ${borderColor}`}
-          >
-            <GitBranch size={12} color={isDarkMode ? "#c2c6d6" : "#4b5563"} className="mr-1" />
-            <Text className={`text-[10px] uppercase font-bold tracking-widest ${isDarkMode ? 'text-[#c2c6d6]' : 'text-gray-600'}`}>Switch</Text>
-          </TouchableOpacity>
+          
+          {isSelectedView ? (
+             <TouchableOpacity 
+               onPress={() => switchBranch(null)}
+               className={`border px-3 py-1.5 rounded flex-row items-center ${isDarkMode ? 'bg-[#2573e633] border-[#adc6ff4d]' : 'bg-blue-100 border-blue-300'}`}
+             >
+               <X size={12} color={isDarkMode ? "#adc6ff" : "#2573e6"} className="mr-1" />
+               <Text className={`text-[10px] uppercase font-bold tracking-widest ${isDarkMode ? 'text-[#adc6ff]' : 'text-[#2573e6]'}`}>Clear</Text>
+             </TouchableOpacity>
+          ) : (
+             <TouchableOpacity 
+               onPress={() => switchBranch(item)}
+               className={`border px-3 py-1.5 rounded flex-row items-center ${isDarkMode ? 'bg-[#131313]' : 'bg-gray-50'} ${borderColor}`}
+             >
+               <GitBranch size={12} color={isDarkMode ? "#c2c6d6" : "#4b5563"} className="mr-1" />
+               <Text className={`text-[10px] uppercase font-bold tracking-widest ${isDarkMode ? 'text-[#c2c6d6]' : 'text-gray-600'}`}>Switch</Text>
+             </TouchableOpacity>
+          )}
         </View>
       </View>
     );
@@ -210,19 +239,19 @@ export default function BranchesScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Stats Cards Carousel */}
+      {/* Stats Cards Grid (2x2) */}
       <View className="mb-6">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <View className="flex-row flex-wrap justify-between">
           {stats.map((s, i) => (
-            <View key={s.label} className={`border p-4 rounded-lg w-36 ${bgCard} ${borderColor} ${i !== stats.length - 1 ? 'mr-3' : ''}`}>
-               <View className="flex-row items-center mb-2">
+            <View key={s.label} className={`border p-4 rounded-lg w-[48%] mb-3 ${bgCard} ${borderColor}`}>
+               <View className="flex-row items-center justify-between mb-2">
+                 <Text className={`text-[10px] font-bold uppercase tracking-widest ${textMuted}`}>{s.label}</Text>
                  <s.icon size={16} color={s.color} />
                </View>
-               <Text className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${textMuted}`}>{s.label}</Text>
                <Text className={`text-2xl font-bold ${textColor}`}>{s.value}</Text>
             </View>
           ))}
-        </ScrollView>
+        </View>
       </View>
 
       {/* Search and Filters */}
@@ -259,7 +288,7 @@ export default function BranchesScreen() {
       ) : (
         <FlatList 
           data={filteredBranches}
-          keyExtractor={(item) => item._id}
+          keyExtractor={(item, index) => item._id ? item._id + '_' + index : index.toString()}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={

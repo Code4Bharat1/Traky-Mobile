@@ -14,49 +14,36 @@ import useThemeStore from '../store/themeStore';
 import AdminHeader from '../components/AdminHeader';
 import AdminTabNavigator from './AdminTabNavigator';
 
-import UserManagement from '../screens/Admin/UserManagement';
-import ActivityLogs from '../screens/Admin/ActivityLogs';
-import BranchesScreen from '../screens/Admin/BranchesScreen';
-import DepartmentsScreen from '../screens/Admin/DepartmentsScreen';
-import CategoriesScreen from '../screens/Admin/CategoriesScreen';
-import ProjectsScreen from '../screens/Admin/ProjectsScreen';
-import IssuesScreen from '../screens/Admin/IssuesScreen';
-import SalaryScreen from '../screens/Admin/SalaryScreen';
-import LeaveApprovalsScreen from '../screens/Admin/LeaveApprovalsScreen';
-import ExpensesScreen from '../screens/Admin/ExpensesScreen';
-import ReportsScreen from '../screens/Admin/ReportsScreen';
-import EmployeeReportScreen from '../screens/Admin/EmployeeReportScreen';
-import NotificationsScreen from '../screens/Admin/NotificationsScreen';
-import TaskTemplatesScreen from '../screens/Admin/TaskTemplatesScreen';
-import PermissionsScreen from '../screens/Admin/PermissionsScreen';
+// Screens are now imported and handled inside AdminTabNavigator.js
+// to keep the bottom tab bar visible across all screens.
 
 const Drawer = createDrawerNavigator();
 
 const MENU_ITEMS = [
-  { label: 'DASHBOARD', icon: LayoutDashboard, route: 'AdminTabs', screen: 'DashboardTab' },
-  { label: 'USER MANAGEMENT', icon: Users, route: 'UserManagement' },
-  { label: 'BRANCHES', icon: GitBranch, route: 'Branches' },
-  { label: 'DEPARTMENTS', icon: Network, route: 'Departments' },
-  { label: 'CATEGORIES', icon: Tags, route: 'Categories' },
-  { label: 'PROJECTS OVERVIEW', icon: FolderKanban, route: 'ProjectsOverview' },
-  { label: 'ISSUES', icon: AlertCircle, route: 'Issues' },
-  { label: 'TASKS', icon: CheckSquare, route: 'AdminTabs', screen: 'Tasks' },
-  { label: 'TASK TEMPLATES', icon: FileText, route: 'TaskTemplates' },
-  { label: 'DAILY LOGS', icon: ClipboardList, route: 'AdminTabs', screen: 'DailyLogs' },
-  { label: 'SALARY', icon: DollarSign, route: 'Salary' },
-  { label: 'LEAVE APPROVALS', icon: CalendarCheck, route: 'LeaveApprovals' },
-  { label: 'EXPENSES', icon: CreditCard, route: 'Expenses' },
-  { label: 'REPORTS', icon: BarChart2, route: 'Reports' },
-  { label: 'EMPLOYEE REPORT', icon: FileBarChart, route: 'EmployeeReport' },
-  { label: 'AUDIT LOGS', icon: Activity, route: 'ActivityLogs' },
-  { label: 'LEADERBOARD', icon: Trophy, route: 'AdminTabs', screen: 'Leaderboard' },
-  { label: 'SETTINGS', icon: Settings, route: 'AdminTabs', screen: 'Settings' },
-  { label: 'PERMISSIONS', icon: Shield, route: 'Permissions' },
-  { label: 'NOTIFICATIONS', icon: Bell, route: 'Notifications' },
+  { label: 'DASHBOARD', icon: LayoutDashboard, route: 'AdminTabs', screen: 'AdminDashboardMain', feature: 'dashboard' },
+  { label: 'USER MANAGEMENT', icon: Users, route: 'AdminTabs', screen: 'UserManagement', feature: 'users' },
+  { label: 'BRANCHES', icon: GitBranch, route: 'AdminTabs', screen: 'Branches' },
+  { label: 'DEPARTMENTS', icon: Network, route: 'AdminTabs', screen: 'Departments', feature: 'departments' },
+  { label: 'CATEGORIES', icon: Tags, route: 'AdminTabs', screen: 'Categories', feature: 'categories' },
+  { label: 'PROJECTS OVERVIEW', icon: FolderKanban, route: 'AdminTabs', screen: 'ProjectsOverview', feature: 'projects' },
+  { label: 'ISSUES', icon: AlertCircle, route: 'AdminTabs', screen: 'Issues', feature: 'bugs' },
+  { label: 'TASKS', icon: CheckSquare, route: 'AdminTabs', screen: 'Tasks', feature: 'tasks' },
+  { label: 'TASK TEMPLATES', icon: FileText, route: 'AdminTabs', screen: 'TaskTemplates', feature: 'taskTemplates' },
+  { label: 'DAILY LOGS', icon: ClipboardList, route: 'AdminTabs', screen: 'DailyLogs', feature: 'dailyLogs' },
+  { label: 'SALARY', icon: DollarSign, route: 'AdminTabs', screen: 'Salary', feature: 'salary' },
+  { label: 'LEAVE APPROVALS', icon: CalendarCheck, route: 'AdminTabs', screen: 'LeaveApprovals', feature: 'leave' },
+  { label: 'EXPENSES', icon: CreditCard, route: 'AdminTabs', screen: 'Expenses', feature: 'expenses' },
+  { label: 'REPORTS', icon: BarChart2, route: 'AdminTabs', screen: 'Reports', feature: 'reports' },
+  { label: 'EMPLOYEE REPORT', icon: FileBarChart, route: 'AdminTabs', screen: 'EmployeeReport', feature: 'reports' },
+  { label: 'AUDIT LOGS', icon: Activity, route: 'AdminTabs', screen: 'ActivityLogs' },
+  { label: 'LEADERBOARD', icon: Trophy, route: 'AdminTabs', screen: 'Leaderboard', feature: 'leaderboard' },
+  { label: 'SETTINGS', icon: Settings, route: 'AdminTabs', screen: 'Settings', feature: 'settings' },
+  { label: 'PERMISSIONS', icon: Shield, route: 'AdminTabs', screen: 'Permissions', feature: 'permissions' },
+  { label: 'NOTIFICATIONS', icon: Bell, route: 'AdminTabs', screen: 'Notifications' },
 ];
 
 export default function AdminNavigator() {
-  const logout = useAuthStore(state => state.logout);
+  const { user, logout } = useAuthStore();
   const { isDarkMode } = useThemeStore();
 
   return (
@@ -68,11 +55,16 @@ export default function AdminNavigator() {
         let activeTabName = null;
 
         if (activeDrawerName === 'AdminTabs') {
-          if (activeRoute.state && typeof activeRoute.state.index === 'number') {
-            activeTabName = activeRoute.state.routes[activeRoute.state.index].name;
+          if (activeRoute.state && activeRoute.state.routes) {
+            const currentTab = activeRoute.state.routes[activeRoute.state.index || 0];
+            if (currentTab.name === 'DashboardTab' && currentTab.state) {
+               // We are inside the MainStack of DashboardTab
+               activeTabName = currentTab.state.routes[currentTab.state.index || 0].name;
+            } else {
+               activeTabName = currentTab.name;
+            }
           } else {
-            // Default to DashboardTab if AdminTabs is focused but state not initialized yet
-            activeTabName = 'DashboardTab';
+            activeTabName = 'AdminDashboardMain';
           }
         }
 
@@ -100,7 +92,12 @@ export default function AdminNavigator() {
             </View>
 
             {/* Menu Items in Sequence */}
-            {MENU_ITEMS.map((item, index) => {
+            {MENU_ITEMS.filter(item => {
+              if (item.feature && user?.enabledFeatures && user.enabledFeatures[item.feature] === false) {
+                return false;
+              }
+              return true;
+            }).map((item, index) => {
               let isFocused = false;
               if (item.route === 'AdminTabs') {
                 isFocused = activeDrawerName === 'AdminTabs' && activeTabName === item.screen;
@@ -121,7 +118,15 @@ export default function AdminNavigator() {
                   inactiveTintColor={isDarkMode ? '#c2c6d6' : '#6b7280'}
                   onPress={() => {
                     if (item.screen) {
-                      props.navigation.navigate(item.route, { screen: item.screen });
+                      const directTabs = ['Tasks', 'DailyLogs', 'Leaderboard', 'Settings'];
+                      if (directTabs.includes(item.screen)) {
+                        props.navigation.navigate(item.route, { screen: item.screen });
+                      } else {
+                        props.navigation.navigate(item.route, { 
+                          screen: 'DashboardTab',
+                          params: { screen: item.screen }
+                        });
+                      }
                     } else {
                       props.navigation.navigate(item.route);
                     }
@@ -142,47 +147,16 @@ export default function AdminNavigator() {
         );
       }}
       screenOptions={{
-        header: ({ navigation, route, options }) => {
-          let title = options.title || route.name;
-          if (route.name === 'AdminTabs') {
-            const routeName = getFocusedRouteNameFromRoute(route) ?? 'DashboardTab';
-            switch (routeName) {
-              case 'DashboardTab': title = 'DASHBOARD'; break;
-              case 'Tasks': title = 'TASKS'; break;
-              case 'DailyLogs': title = 'DAILY LOGS'; break;
-              case 'Leaderboard': title = 'LEADERBOARD'; break;
-              case 'Settings': title = 'SETTINGS'; break;
-              default: title = 'OVERVIEW'; break;
-            }
-          }
-          return <AdminHeader navigation={navigation} title={title} />;
-        },
+        headerShown: false,
         drawerStyle: { backgroundColor: isDarkMode ? '#131313' : '#ffffff', width: 280 },
       }}
     >
-      {/* Hidden Tab Navigator - FIRST SO IT IS INITIAL ROUTE */}
+      {/* Hidden Tab Navigator - ONLY ROOT ROUTE SO TABS PERSIST */}
       <Drawer.Screen 
         name="AdminTabs" 
         component={AdminTabNavigator} 
         options={{ title: 'APP MODULES', drawerItemStyle: { display: 'none' } }} 
       />
-
-      {/* Other independent screens */}
-      <Drawer.Screen name="UserManagement" component={UserManagement} options={{ title: 'USER MANAGEMENT' }} />
-      <Drawer.Screen name="Branches" component={BranchesScreen} options={{ title: 'BRANCHES' }} />
-      <Drawer.Screen name="Departments" component={DepartmentsScreen} options={{ title: 'DEPARTMENTS' }} />
-      <Drawer.Screen name="Categories" component={CategoriesScreen} options={{ title: 'CATEGORIES' }} />
-      <Drawer.Screen name="ProjectsOverview" component={ProjectsScreen} options={{ title: 'PROJECTS OVERVIEW' }} />
-      <Drawer.Screen name="Issues" component={IssuesScreen} options={{ title: 'ISSUES' }} />
-      <Drawer.Screen name="TaskTemplates" component={TaskTemplatesScreen} options={{ title: 'TASK TEMPLATES' }} />
-      <Drawer.Screen name="Salary" component={SalaryScreen} options={{ title: 'SALARY' }} />
-      <Drawer.Screen name="LeaveApprovals" component={LeaveApprovalsScreen} options={{ title: 'LEAVE APPROVALS' }} />
-      <Drawer.Screen name="Expenses" component={ExpensesScreen} options={{ title: 'EXPENSES' }} />
-      <Drawer.Screen name="Reports" component={ReportsScreen} options={{ title: 'REPORTS' }} />
-      <Drawer.Screen name="EmployeeReport" component={EmployeeReportScreen} options={{ title: 'EMPLOYEE REPORT' }} />
-      <Drawer.Screen name="ActivityLogs" component={ActivityLogs} options={{ title: 'AUDIT LOGS' }} />
-      <Drawer.Screen name="Permissions" component={PermissionsScreen} options={{ title: 'PERMISSIONS' }} />
-      <Drawer.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'NOTIFICATIONS' }} />
     </Drawer.Navigator>
   );
 }

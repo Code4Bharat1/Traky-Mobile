@@ -317,7 +317,7 @@ export default function DailyLogsScreen() {
       ) : (
         <FlatList 
           data={flatData}
-          keyExtractor={(item) => item._id}
+          keyExtractor={(item, index) => item._id ? item._id + '_' + index : index.toString()}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
           onEndReached={loadMore}
@@ -340,7 +340,7 @@ export default function DailyLogsScreen() {
           <View className={`border rounded-lg w-5/6 max-h-[60%] p-2 ${bgCard} ${borderColor}`}>
             <FlatList
               data={getDropdownOptions()}
-              keyExtractor={(item) => item._id || 'none'}
+              keyExtractor={(item, index) => item._id ? item._id + '_' + index : index.toString()}
               renderItem={({item}) => {
                 let isSelected = false;
                 if (dropdownType === 'project') isSelected = filterProject === item._id;

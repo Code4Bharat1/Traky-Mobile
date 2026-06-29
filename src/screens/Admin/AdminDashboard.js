@@ -55,10 +55,10 @@ export default function AdminDashboard({ navigation }) {
       const [pR, dR, bR, tR, lR, lbR, exR] = await Promise.allSettled([
         client.get('/projects?limit=100'),
         client.get('/departments'),
-        client.get('/bugs?limit=100'),
-        client.get('/tasks?limit=100'),
+        client.get('/bugs'),
+        client.get('/tasks'),
         client.get('/activity-logs?limit=50'),
-        client.get('/users/leaderboard?period=all'),
+        client.get('/leaderboard?period=all'),
         client.get('/expenses?status=approved&limit=100')
       ]);
 
@@ -131,11 +131,11 @@ export default function AdminDashboard({ navigation }) {
     >
       {/* Header */}
       <View className="mb-6 mt-2 flex-row justify-between items-center">
-         <View>
+         <View className="flex-1 mr-3">
             <Text className={`text-[10px] tracking-widest uppercase mb-1 font-bold ${textMuted}`}>Admin</Text>
-            <Text className={`text-xl font-bold ${textColor}`}>Welcome back, <Text className={textAccent}>{user?.name || 'User'}</Text></Text>
+            <Text className={`text-xl font-bold ${textColor}`} numberOfLines={2}>Welcome back, <Text className={textAccent}>{user?.name || 'User'}</Text></Text>
          </View>
-         <View className={`border px-3 py-2 flex-row items-center rounded ${bgCard} ${borderColor}`}>
+         <View className={`border px-3 py-2 flex-row items-center rounded flex-shrink-0 ${bgCard} ${borderColor}`}>
             <Shield size={14} color={isDarkMode ? "#adc6ff" : "#2573e6"} className="mr-2" />
             <Text className={`text-[10px] tracking-widest uppercase font-bold ${textMuted}`}>Administrator</Text>
          </View>
@@ -148,10 +148,10 @@ export default function AdminDashboard({ navigation }) {
         </View>
       )}
 
-      {/* Horizontal Stats Cards */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6">
+      {/* Grid Stats Cards */}
+      <View className="flex-row flex-wrap justify-between mb-6">
         {stats.map((s, i) => (
-          <View key={s.label} className={`border rounded-lg p-4 w-36 ${bgCard} ${borderColor} ${i !== stats.length - 1 ? 'mr-3' : ''}`}>
+          <View key={s.label} className={`border rounded-lg p-4 mb-3 ${bgCard} ${borderColor}`} style={{ width: '48%' }}>
              <View className="flex-row items-center mb-3">
                <s.icon size={16} color={s.color} />
              </View>
@@ -159,7 +159,7 @@ export default function AdminDashboard({ navigation }) {
              <Text style={{color: s.color}} className="text-2xl font-bold">{s.value}</Text>
           </View>
         ))}
-      </ScrollView>
+      </View>
 
       {/* Active Projects */}
       <View className={`border rounded-lg mb-6 ${bgCard} ${borderColor}`}>
@@ -177,12 +177,38 @@ export default function AdminDashboard({ navigation }) {
           {activeProjects.length === 0 ? (
             <Text className={`text-[10px] tracking-widest uppercase text-center py-6 ${textMuted}`}>No active projects</Text>
           ) : (
-            activeProjects.slice(0, 10).map((p, idx) => (
-              <View key={p._id} className={`flex-row justify-between items-center px-4 py-3 ${idx !== 0 ? `border-t ${borderColor}` : ''}`}>
+            activeProjects.map((p, idx) => (
+              <View key={`proj_${p._id || idx}`} className={`flex-row justify-between items-center px-4 py-3 ${idx !== 0 ? `border-t ${borderColor}` : ''}`}>
                 <Text className={`text-xs font-bold flex-1 mr-2 ${textColor}`} numberOfLines={1}>{p.name}</Text>
                 <StatusBadge status={p.status} />
               </View>
             ))
+          )}
+        </View>
+      </View>
+
+      {/* Departments */}
+      <View className={`border rounded-lg mb-6 ${bgCard} ${borderColor}`}>
+        <View className={`flex-row justify-between items-center px-4 py-3 border-b ${borderColor}`}>
+           <View className="flex-row items-center">
+             <Building2 size={16} color="#47c8ff" className="mr-2" />
+             <Text className={`text-[10px] tracking-widest uppercase font-bold ${textMuted}`}>Departments</Text>
+           </View>
+           <TouchableOpacity onPress={() => navigateTo('Departments')} className="flex-row items-center">
+             <Text className={`text-[10px] tracking-widest uppercase mr-1 ${textMuted}`}>Manage</Text>
+             <ArrowRight size={12} color={isDarkMode ? "#888" : "#555"} />
+           </TouchableOpacity>
+        </View>
+        <View>
+          {data.depts.length === 0 ? (
+             <Text className={`text-[10px] tracking-widest uppercase text-center py-6 ${textMuted}`}>No departments yet</Text>
+          ) : (
+             data.depts.map((d, idx) => (
+                <View key={`dept_${d._id || idx}`} className={`flex-row justify-between items-center px-4 py-3 ${idx !== 0 ? `border-t ${borderColor}` : ''}`}>
+                   <Text className={`text-xs font-bold ${textColor}`} numberOfLines={1}>{(d.departmentName || d.name || '').toUpperCase()}</Text>
+                   <Text className={`text-[10px] tracking-widest ${textMuted}`}>{d.employeeCount ?? 0} Employee</Text>
+                </View>
+             ))
           )}
         </View>
       </View>
@@ -203,10 +229,10 @@ export default function AdminDashboard({ navigation }) {
           {data.leaderboard.length === 0 ? (
             <Text className={`text-[10px] tracking-widest uppercase text-center py-6 ${textMuted}`}>No data yet</Text>
           ) : (
-            data.leaderboard.slice(0, 5).map((emp, idx) => {
+            data.leaderboard.map((emp, idx) => {
               const m = MEDALS[idx] || MEDALS[2];
               return (
-                <View key={emp._id || emp.id} className={`flex-row items-center px-4 py-3 ${idx !== 0 ? `border-t ${borderColor}` : ''}`}>
+                <View key={`emp_${emp.userId || emp._id || idx}`} className={`flex-row items-center px-4 py-3 ${idx !== 0 ? `border-t ${borderColor}` : ''}`}>
                   <View className={`border rounded px-2 py-0.5 mr-3 ${m.bg} ${m.border}`}>
                     <Text className={`text-[10px] font-bold uppercase tracking-widest ${m.color}`}>{m.label}</Text>
                   </View>
@@ -215,6 +241,43 @@ export default function AdminDashboard({ navigation }) {
                     <Text className={`text-[10px] mt-0.5 ${textMuted}`}>{emp.score ?? 0} pts</Text>
                   </View>
                   <Text className={`text-lg font-bold ${m.color}`}>{emp.score ?? 0}</Text>
+                </View>
+              );
+            })
+          )}
+        </View>
+      </View>
+
+      {/* Issues */}
+      <View className={`border rounded-lg mb-6 ${bgCard} ${borderColor}`}>
+        <View className={`flex-row justify-between items-center px-4 py-3 border-b ${borderColor}`}>
+           <View className="flex-row items-center">
+             <Bug size={16} color="#ff4747" className="mr-2" />
+             <Text className={`text-[10px] tracking-widest uppercase font-bold ${textMuted}`}>Issues</Text>
+           </View>
+           <TouchableOpacity onPress={() => navigateTo('Issues')} className="flex-row items-center">
+             <Text className={`text-[10px] tracking-widest uppercase mr-1 ${textMuted}`}>View All</Text>
+             <ArrowRight size={12} color={isDarkMode ? "#888" : "#555"} />
+           </TouchableOpacity>
+        </View>
+        <View>
+          {openBugs.length === 0 ? (
+            <View className="flex-row items-center justify-center py-6">
+               <CheckCircle2 size={16} color="#47ff8a" className="mr-2" />
+               <Text className="text-[#47ff8a] text-[10px] tracking-widest uppercase font-bold">NO ISSUES !</Text>
+            </View>
+          ) : (
+            openBugs.map((b, idx) => {
+              const proj = data.projects.find((p) => p._id === b.projectId);
+              return (
+                <View key={`bug_${b._id || idx}`} className={`flex-row justify-between items-center px-4 py-3 ${idx !== 0 ? `border-t ${borderColor}` : ''}`}>
+                  <View className="flex-1 mr-2">
+                    <Text className={`text-xs font-bold ${textColor}`} numberOfLines={1}>{b.title}</Text>
+                    <Text className={`text-[10px] mt-0.5 ${textMuted}`}>{proj?.name || "Project"}</Text>
+                  </View>
+                  <View className={`border px-2 py-0.5 rounded ${b.severity === 'CRITICAL' ? 'border-[#ff47474d] bg-[#ff47471a]' : b.severity === 'HIGH' ? 'border-[#e8a8474d] bg-[#e8a8471a]' : 'border-[#88888833] bg-[#8888881a]'}`}>
+                    <Text className={`text-[10px] uppercase font-bold tracking-widest ${b.severity === 'CRITICAL' ? 'text-[#ff4747]' : b.severity === 'HIGH' ? 'text-[#e8a847]' : 'text-[#888]'}`}>{b.severity}</Text>
+                  </View>
                 </View>
               );
             })
@@ -238,8 +301,8 @@ export default function AdminDashboard({ navigation }) {
           {openTasks.length === 0 ? (
             <Text className={`text-[10px] tracking-widest uppercase text-center py-6 ${textMuted}`}>No open tasks</Text>
           ) : (
-            openTasks.slice(0, 10).map((t, idx) => (
-              <View key={t._id} className={`flex-row justify-between items-center px-4 py-3 ${idx !== 0 ? `border-t ${borderColor}` : ''}`}>
+            openTasks.map((t, idx) => (
+              <View key={`task_${t._id || idx}`} className={`flex-row justify-between items-center px-4 py-3 ${idx !== 0 ? `border-t ${borderColor}` : ''}`}>
                 <View className="flex-1 mr-2">
                   <Text className={`text-xs font-bold ${textColor}`} numberOfLines={1}>{t.title}</Text>
                   <Text className={`text-[10px] mt-0.5 ${textMuted}`}>{t.created_by?.name || "Admin"}</Text>
@@ -253,65 +316,31 @@ export default function AdminDashboard({ navigation }) {
         </View>
       </View>
 
-      {/* Issues */}
+      {/* Recent Expenses */}
       <View className={`border rounded-lg mb-8 ${bgCard} ${borderColor}`}>
         <View className={`flex-row justify-between items-center px-4 py-3 border-b ${borderColor}`}>
            <View className="flex-row items-center">
-             <Bug size={16} color="#ff4747" className="mr-2" />
-             <Text className={`text-[10px] tracking-widest uppercase font-bold ${textMuted}`}>Issues</Text>
+             <CreditCard size={16} color="#47ff8a" className="mr-2" />
+             <Text className={`text-[10px] tracking-widest uppercase font-bold ${textMuted}`}>Recent Expenses</Text>
            </View>
-           <TouchableOpacity onPress={() => navigateTo('Issues')} className="flex-row items-center">
+           <TouchableOpacity onPress={() => navigateTo('Expenses')} className="flex-row items-center">
              <Text className={`text-[10px] tracking-widest uppercase mr-1 ${textMuted}`}>View All</Text>
              <ArrowRight size={12} color={isDarkMode ? "#888" : "#555"} />
            </TouchableOpacity>
         </View>
         <View>
-          {openBugs.length === 0 ? (
-            <View className="flex-row items-center justify-center py-6">
-               <CheckCircle2 size={16} color="#47ff8a" className="mr-2" />
-               <Text className="text-[#47ff8a] text-[10px] tracking-widest uppercase font-bold">NO ISSUES !</Text>
-            </View>
+          {data.approvedExpenses.length === 0 ? (
+            <Text className={`text-[10px] tracking-widest uppercase text-center py-6 ${textMuted}`}>No approved expenses</Text>
           ) : (
-            openBugs.slice(0, 10).map((b, idx) => {
-              const proj = data.projects.find((p) => p._id === b.projectId);
-              return (
-                <View key={b._id} className={`flex-row justify-between items-center px-4 py-3 ${idx !== 0 ? `border-t ${borderColor}` : ''}`}>
-                  <View className="flex-1 mr-2">
-                    <Text className={`text-xs font-bold ${textColor}`} numberOfLines={1}>{b.title}</Text>
-                    <Text className={`text-[10px] mt-0.5 ${textMuted}`}>{proj?.name || "Project"}</Text>
-                  </View>
-                  <View className={`border px-2 py-0.5 rounded ${b.severity === 'CRITICAL' ? 'border-[#ff47474d] bg-[#ff47471a]' : b.severity === 'HIGH' ? 'border-[#e8a8474d] bg-[#e8a8471a]' : 'border-[#88888833] bg-[#8888881a]'}`}>
-                    <Text className={`text-[10px] uppercase font-bold tracking-widest ${b.severity === 'CRITICAL' ? 'text-[#ff4747]' : b.severity === 'HIGH' ? 'text-[#e8a847]' : 'text-[#888]'}`}>{b.severity}</Text>
-                  </View>
+            data.approvedExpenses.map((exp, idx) => (
+              <View key={`exp_${exp._id || idx}`} className={`flex-row justify-between items-center px-4 py-3 ${idx !== 0 ? `border-t ${borderColor}` : ''}`}>
+                <View className="flex-1 mr-2">
+                  <Text className={`text-xs font-bold ${textColor}`} numberOfLines={1}>{exp.title}</Text>
+                  <Text className={`text-[10px] mt-0.5 ${textMuted}`}>{exp.userId?.name || "User"} • {exp.category}</Text>
                 </View>
-              );
-            })
-          )}
-        </View>
-      </View>
-
-      {/* Departments */}
-      <View className={`border rounded-lg mb-8 ${bgCard} ${borderColor}`}>
-        <View className={`flex-row justify-between items-center px-4 py-3 border-b ${borderColor}`}>
-           <View className="flex-row items-center">
-             <Building2 size={16} color="#47c8ff" className="mr-2" />
-             <Text className={`text-[10px] tracking-widest uppercase font-bold ${textMuted}`}>Departments</Text>
-           </View>
-           <TouchableOpacity onPress={() => navigateTo('Departments')} className="flex-row items-center">
-             <Text className={`text-[10px] tracking-widest uppercase mr-1 ${textMuted}`}>Manage</Text>
-             <ArrowRight size={12} color={isDarkMode ? "#888" : "#555"} />
-           </TouchableOpacity>
-        </View>
-        <View>
-          {data.depts.length === 0 ? (
-             <Text className={`text-[10px] tracking-widest uppercase text-center py-6 ${textMuted}`}>No departments yet</Text>
-          ) : (
-             data.depts.slice(0, 10).map((d, idx) => (
-                <View key={d._id || d.id || idx} className={`flex-row justify-between items-center px-4 py-3 ${idx !== 0 ? `border-t ${borderColor}` : ''}`}>
-                   <Text className={`text-xs font-bold ${textColor}`} numberOfLines={1}>{(d.departmentName || d.name || '').toUpperCase()}</Text>
-                   <Text className={`text-[10px] tracking-widest ${textMuted}`}>{d.employeeCount ?? 0} Employee</Text>
-                </View>
-             ))
+                <Text className="text-sm font-bold text-[#47ff8a]">₹{exp.amount?.toFixed(0)}</Text>
+              </View>
+            ))
           )}
         </View>
       </View>
