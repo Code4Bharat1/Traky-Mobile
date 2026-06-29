@@ -178,7 +178,7 @@ export default function TaskTemplatesScreen() {
       ) : (
         <FlatList 
           data={filteredTemplates}
-          keyExtractor={(item) => item._id}
+          keyExtractor={(item, index) => item._id ? item._id + '_' + index : index.toString()}
           renderItem={renderItem}
           numColumns={2}
           columnWrapperStyle={{ justifyContent: 'flex-start' }}
@@ -285,7 +285,7 @@ export default function TaskTemplatesScreen() {
           <View className={`border rounded-lg w-5/6 max-h-[60%] p-2 ${bgCard} ${borderColor}`}>
             <FlatList
               data={[{_id: '', departmentName: 'No Department'}, ...departments]}
-              keyExtractor={(item) => item._id || 'none'}
+              keyExtractor={(item, index) => item._id ? item._id + '_' + index : index.toString()}
               renderItem={({item}) => (
                <TouchableOpacity className={`py-4 px-4 border-b flex-row items-center justify-between ${borderColor}`} onPress={() => { setFormData({...formData, departmentId: item._id}); setDropdownVisible(false); }}>
                   <Text className={`text-base capitalize ${textColor}`}>{item.departmentName}</Text>

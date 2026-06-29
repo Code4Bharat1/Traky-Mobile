@@ -239,7 +239,7 @@ export default function ReportsScreen() {
       {/* Cards List */}
       <FlatList 
         data={filteredReports}
-        keyExtractor={(item) => item._id}
+        keyExtractor={(item, index) => item._id ? item._id + '_' + index : index.toString()}
         renderItem={renderItem}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 20 }}

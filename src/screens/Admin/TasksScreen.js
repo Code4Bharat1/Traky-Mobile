@@ -2,12 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Modal, TextInput, Alert, ScrollView } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import client from '../../api/client';
-import { CheckSquare, Plus, Clock, Tag, X, ChevronDown, CheckCircle, Search, MessageSquare, Send, FileText, Calendar } from 'lucide-react-native';
+import { CheckSquare, Plus, Clock, Tag, X, ChevronDown, CheckCircle, Search, MessageSquare, Send, FileText, Calendar, Check } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 
 export default function TasksScreen() {
   const { isDarkMode } = useThemeStore();
   const [tasks, setTasks] = useState([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [projects, setProjects] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [users, setUsers] = useState([]);
@@ -28,7 +32,8 @@ export default function TasksScreen() {
 
   // Add Task Modal State
   const [addModalVisible, setAddModalVisible] = useState(false);
-  const [formData, setFormData] = useState({ title: '', description: '', points: '0', priority: 'MEDIUM', projectId: '', assigneeIds: [] });
+  const [formData, setFormData] = useState({ title: '', description: '', priority: 'MEDIUM', status: 'IN_PROGRESS', projectId: '', assigneeIds: [], proofRequired: false, startTime: null, endTime: null });
+  const [employeeSearch, setEmployeeSearch] = useState('');
   const [saving, setSaving] = useState(false);
 
   // Details Modal State
@@ -44,32 +49,75 @@ export default function TasksScreen() {
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [dropdownType, setDropdownType] = useState(''); 
 
-  const fetchData = async () => {
+  const fetchTasks = async (pageNumber = 1, shouldRefresh = false) => {
     try {
-      setLoading(true);
-      const [taskRes, projRes, depRes, userRes] = await Promise.all([
-        client.get('/tasks?limit=5000'),
-        client.get('/projects?limit=500'),
-        client.get('/departments?limit=100'),
-        client.get('/users?limit=500')
-      ]);
-      setTasks(taskRes.data.data || taskRes.data || []);
-      setProjects(projRes.data.data || projRes.data || []);
-      setDepartments(depRes.data.allDepartments || depRes.data.data || []);
-      setUsers(userRes.data.data || userRes.data.users || []);
+      if (pageNumber === 1) setLoading(true);
+      else setLoadingMore(true);
+
+      let url = `/tasks?limit=20&page=${pageNumber}`;
+      if (debouncedSearchQuery) url += `&search=${encodeURIComponent(debouncedSearchQuery)}`;
+      if (filterStatus !== 'ALL') url += `&status=${filterStatus}`;
+      if (filterDept !== 'ALL') url += `&filterDept=${filterDept}`;
+      if (filterDate) {
+         const d = new Date(filterDate);
+         d.setHours(0,0,0,0);
+         url += `&dateFrom=${d.toISOString()}`;
+         d.setHours(23,59,59,999);
+         url += `&dateTo=${d.toISOString()}`;
+      }
+
+      const res = await client.get(url);
+      const newTasks = res.data.data || res.data || [];
+      
+      if (shouldRefresh || pageNumber === 1) {
+        setTasks(newTasks);
+      } else {
+        setTasks(prev => [...prev, ...newTasks]);
+      }
+
+      if (res.data.pagination) {
+        setHasMore(pageNumber < res.data.pagination.pages);
+      } else {
+        setHasMore(newTasks.length === 20); // fallback
+      }
+      setPage(pageNumber);
     } catch (error) {
       console.error("Failed to load tasks data", error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
+    const fetchAux = async () => {
+      try {
+        const [projRes, depRes, userRes] = await Promise.all([
+          client.get('/projects?limit=500'),
+          client.get('/departments?limit=100'),
+          client.get('/users?limit=500')
+        ]);
+        setProjects(projRes.data.data || projRes.data || []);
+        setDepartments(depRes.data.allDepartments || depRes.data.data || []);
+        setUsers(userRes.data.data || userRes.data.users || []);
+      } catch (err) {
+        console.error("Failed to load auxiliary data", err);
+      }
+    };
+    fetchAux();
   }, []);
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearchQuery(searchQuery), 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    fetchTasks(1, true);
+  }, [debouncedSearchQuery, filterStatus, filterDept, filterDate]);
+
   const openAddModal = () => {
-    setFormData({ title: '', description: '', points: '0', priority: 'MEDIUM', projectId: '', assigneeIds: [] });
+    setFormData({ title: '', description: '', priority: 'MEDIUM', status: 'IN_PROGRESS', projectId: '', assigneeIds: [], proofRequired: false, startTime: null, endTime: null });
     setAddModalVisible(true);
   };
 
@@ -96,10 +144,18 @@ export default function TasksScreen() {
     }
     setSaving(true);
     try {
-      const payload = { ...formData, points: Number(formData.points) };
+      const payload = { 
+        ...formData, 
+        contributors: formData.assigneeIds,
+        proofRequired: formData.proofRequired
+      };
+      // Format dates if available
+      if (formData.startTime) payload.startTime = formData.startTime.toISOString();
+      if (formData.endTime) payload.endTime = formData.endTime.toISOString();
+      if (!payload.projectId) delete payload.projectId;
       await client.post('/tasks', payload);
       setAddModalVisible(false);
-      fetchData();
+      fetchTasks(1, true);
     } catch (error) {
       console.error(error);
       Alert.alert('Error', error.response?.data?.error || 'Failed to assign task');
@@ -137,32 +193,31 @@ export default function TasksScreen() {
   // Processing Data
   const safeTasks = Array.isArray(tasks) ? tasks : [];
   
-  const filteredTasks = safeTasks.filter(t => {
-    if (filterStatus !== 'ALL' && t.status !== filterStatus) return false;
-
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      const title = (t.title || t.name || '').toLowerCase();
-      if (!title.includes(q)) return false;
-    }
-
-    if (filterDate) {
-      const targetDate = new Date(filterDate).toDateString();
-      const tStart = t.startTime ? new Date(t.startTime).toDateString() : null;
-      const tDeadline = t.deadline ? new Date(t.deadline).toDateString() : null;
-      const tCreated = t.created_at ? new Date(t.created_at).toDateString() : null;
-      if (tStart !== targetDate && tDeadline !== targetDate && tCreated !== targetDate) {
-        return false;
-      }
-    }
-    
-    return true;
-  });
+  const filteredTasks = safeTasks;
 
   const getTimeSpent = (item) => {
     let totalMs = 0;
     if (item.employeeProgress && item.employeeProgress.length > 0) {
-      totalMs = item.employeeProgress.reduce((acc, p) => acc + (p.totalActiveMs || 0), 0);
+      item.employeeProgress.forEach(p => {
+        if (Array.isArray(p.sessions) && p.sessions.length > 0) {
+          p.sessions.forEach(s => {
+            const st = s.start ? new Date(s.start).getTime() : null;
+            const en = s.end ? new Date(s.end).getTime() : null;
+            if (st && en && !isNaN(st) && !isNaN(en) && en > st) totalMs += (en - st);
+          });
+        } else if (p.startedAt || p.started_at) {
+          const st = new Date(p.startedAt || p.started_at).getTime();
+          const enDate = p.completedAt || p.completed_at;
+          if (!isNaN(st)) {
+            if (enDate) {
+              const en = new Date(enDate).getTime();
+              if (!isNaN(en) && en > st) totalMs += (en - st);
+            } else {
+              totalMs += (Date.now() - st);
+            }
+          }
+        }
+      });
     }
     if (totalMs > 0) return (totalMs / (1000 * 60 * 60)).toFixed(2) + 'hr';
     if (item.totalTimeSpent) return `${item.totalTimeSpent}hr`;
@@ -171,11 +226,13 @@ export default function TasksScreen() {
   };
 
   const getDropdownOptions = () => {
-    if (dropdownType === 'project') return [{_id: '', name: 'No Project'}, ...projects.map(p => ({_id: p._id, name: p.name || p.projectName}))];
+    if (dropdownType === 'project') return [{_id: '', name: 'None / No Project'}, ...projects.map(p => ({_id: p._id, name: p.name || p.projectName}))];
     if (dropdownType === 'filterStatus') return [
       {_id: 'ALL', name: 'All Statuses'}, {_id: 'PENDING', name: 'Pending'}, {_id: 'IN_PROGRESS', name: 'In Progress'}, {_id: 'IN_REVIEW', name: 'In Review'}, {_id: 'COMPLETED', name: 'Completed'}, {_id: 'REJECTED', name: 'Rejected'}
     ];
     if (dropdownType === 'filterDept') return [{_id: 'ALL', name: 'All Depts'}, ...departments.map(d => ({_id: d._id, name: d.departmentName}))];
+    if (dropdownType === 'addPriority') return [{_id: 'LOW', name: 'Low'}, {_id: 'MEDIUM', name: 'Medium'}, {_id: 'HIGH', name: 'High'}];
+    if (dropdownType === 'addStatus') return [{_id: 'TODO', name: 'Todo'}, {_id: 'IN_PROGRESS', name: 'In Progress'}, {_id: 'DONE', name: 'Done'}];
     return [];
   };
 
@@ -183,6 +240,8 @@ export default function TasksScreen() {
     if (dropdownType === 'project') setFormData({...formData, projectId: item._id});
     if (dropdownType === 'filterStatus') setFilterStatus(item._id);
     if (dropdownType === 'filterDept') setFilterDept(item._id);
+    if (dropdownType === 'addPriority') setFormData({...formData, priority: item._id});
+    if (dropdownType === 'addStatus') setFormData({...formData, status: item._id});
     setDropdownVisible(false);
   };
 
@@ -458,75 +517,131 @@ export default function TasksScreen() {
 
   const renderAddModal = () => (
     <Modal visible={addModalVisible} transparent animationType="slide">
-        <View className="flex-1 justify-end bg-[#000000cc]">
-          <View className={`border-t rounded-t-2xl p-6 h-[85%] ${bgCard} ${borderColor}`}>
-            <View className="flex-row justify-between items-center mb-6">
-               <Text className={`text-lg font-bold tracking-widest uppercase ${textColor}`}>Assign Task</Text>
-               <TouchableOpacity onPress={() => setAddModalVisible(false)}><X size={24} color={isDarkMode ? "#888" : "#6b7280"} /></TouchableOpacity>
+        <View className="flex-1 justify-center items-center bg-[#000000cc] p-4">
+          <View className={`border rounded-lg p-6 w-full max-h-[90%] ${bgCard} ${borderColor}`}>
+            <View className="flex-row justify-between items-center mb-6 border-b pb-4 ${borderColor}">
+               <Text className={`text-sm font-bold tracking-widest uppercase ${textColor}`}>Assign New Task</Text>
+               <TouchableOpacity onPress={() => setAddModalVisible(false)}><X size={20} color={isDarkMode ? "#888" : "#6b7280"} /></TouchableOpacity>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Task Title *</Text>
-              <View className={`border rounded p-3 mb-4 ${bgInputAlt} ${borderColor}`}>
-                 <TextInput 
-                   value={formData.title} 
-                   onChangeText={v => setFormData({...formData, title: v})} 
-                   placeholder="e.g. Design Homepage" 
-                   placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"} 
-                   className={`text-base py-1 ${textColor}`} 
-                 />
-              </View>
+               <Text className={`text-[10px] font-bold mb-2 uppercase tracking-widest ${textMuted}`}>Task Title</Text>
+               <View className={`border rounded p-3 mb-4 ${bgInputAlt} ${borderColor}`}>
+                  <TextInput 
+                    value={formData.title} 
+                    onChangeText={v => setFormData({...formData, title: v})} 
+                    placeholder="e.g. Implement Login API" 
+                    placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"} 
+                    className={`text-xs ${textColor}`} 
+                  />
+               </View>
 
-              <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Description</Text>
-              <View className={`border rounded p-3 mb-4 ${bgInputAlt} ${borderColor}`}>
-                 <TextInput 
-                   value={formData.description} 
-                   onChangeText={v => setFormData({...formData, description: v})} 
-                   placeholder="Task description..." 
-                   placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"} 
-                   multiline numberOfLines={3}
-                   className={`text-base py-1 min-h-[60px] ${textColor}`} 
-                   textAlignVertical="top"
-                 />
-              </View>
+               <Text className={`text-[10px] font-bold mb-2 uppercase tracking-widest ${textMuted}`}>Project</Text>
+               <TouchableOpacity onPress={() => { setDropdownType('project'); setDropdownVisible(true); }} className={`border rounded p-3 mb-4 flex-row justify-between items-center ${bgInputAlt} ${borderColor}`}>
+                  <Text className={formData.projectId ? `text-xs ${textColor}` : `text-xs ${textMuted}`}>
+                    {formData.projectId ? projects.find(p => p._id === formData.projectId)?.name || projects.find(p => p._id === formData.projectId)?.projectName || 'Unknown' : 'None / No Project'}
+                  </Text>
+                  <ChevronDown size={16} color={isDarkMode ? "#888" : "#9ca3af"} />
+               </TouchableOpacity>
 
-              <View className="flex-row justify-between mb-4">
-                <View className="flex-1 mr-2">
-                  <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Points</Text>
-                  <View className={`border rounded p-3 ${bgInputAlt} ${borderColor}`}>
+               <Text className={`text-[10px] font-bold mb-2 uppercase tracking-widest ${textMuted}`}>Description</Text>
+               <View className={`border rounded p-3 mb-4 ${bgInputAlt} ${borderColor}`}>
+                  <TextInput 
+                    value={formData.description} 
+                    onChangeText={v => setFormData({...formData, description: v})} 
+                    placeholder="Details about the task..." 
+                    placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"} 
+                    multiline numberOfLines={3}
+                    className={`text-xs min-h-[60px] ${textColor}`} 
+                    textAlignVertical="top"
+                  />
+               </View>
+
+               <Text className={`text-[10px] font-bold mb-2 uppercase tracking-widest ${textMuted}`}>Assign Employees</Text>
+               <View className={`border rounded mb-4 ${bgInputAlt} ${borderColor}`}>
+                  <View className={`flex-row items-center p-3 border-b ${borderColor}`}>
+                     <Search size={14} color={isDarkMode ? "#888" : "#9ca3af"} className="mr-2" />
                      <TextInput 
-                       value={formData.points} 
-                       onChangeText={v => setFormData({...formData, points: v})} 
-                       keyboardType="numeric"
-                       className={`text-base py-1 ${textColor}`} 
+                        value={employeeSearch}
+                        onChangeText={setEmployeeSearch}
+                        placeholder="Search users..."
+                        placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"}
+                        className={`flex-1 text-xs ${textColor}`}
                      />
                   </View>
-                </View>
-                <View className="flex-1 ml-2">
-                  <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Priority</Text>
-                  <View className={`flex-row justify-between border rounded p-1 ${bgInputAlt} ${borderColor}`}>
-                    {['LOW', 'MEDIUM', 'HIGH'].map(p => (
-                      <TouchableOpacity key={p} onPress={() => setFormData({...formData, priority: p})} className={`flex-1 py-2 items-center rounded ${formData.priority === p ? (isDarkMode ? 'bg-[#adc6ff]' : 'bg-[#2573e6]') : ''}`}>
-                        <Text className={`text-[10px] font-bold ${formData.priority === p ? (isDarkMode ? 'text-[#131313]' : 'text-white') : textMuted}`}>{p[0]}</Text>
-                      </TouchableOpacity>
-                    ))}
+                  <View className="max-h-40">
+                     <ScrollView nestedScrollEnabled>
+                        {users.filter(u => u.name.toLowerCase().includes(employeeSearch.toLowerCase())).map(u => {
+                           const isSelected = formData.assigneeIds.includes(u._id);
+                           return (
+                              <TouchableOpacity 
+                                 key={u._id} 
+                                 onPress={() => {
+                                    if (isSelected) setFormData({...formData, assigneeIds: formData.assigneeIds.filter(id => id !== u._id)});
+                                    else setFormData({...formData, assigneeIds: [...formData.assigneeIds, u._id]});
+                                 }}
+                                 className={`flex-row items-center justify-between p-3 border-b ${borderColor}`}
+                              >
+                                 <View>
+                                    <Text className={`text-xs font-bold ${textColor}`}>{u.name}</Text>
+                                    <Text className={`text-[9px] tracking-widest uppercase mt-0.5 ${textMuted}`}>{u.role?.name || u.role || 'EMPLOYEE'}</Text>
+                                 </View>
+                                 <View className={`w-4 h-4 border rounded items-center justify-center ${isSelected ? (isDarkMode ? 'bg-[#adc6ff] border-[#adc6ff]' : 'bg-[#2573e6] border-[#2573e6]') : borderColor}`}>
+                                    {isSelected && <Check size={10} color={isDarkMode ? "#131313" : "#ffffff"} />}
+                                 </View>
+                              </TouchableOpacity>
+                           );
+                        })}
+                     </ScrollView>
                   </View>
-                </View>
-              </View>
+               </View>
 
-              <Text className={`text-[10px] font-bold mb-2 uppercase ${textMuted}`}>Project (Optional)</Text>
-              <TouchableOpacity onPress={() => { setDropdownType('project'); setDropdownVisible(true); }} className={`border rounded p-4 mb-8 flex-row justify-between items-center ${bgInputAlt} ${borderColor}`}>
-                 <Text className={formData.projectId ? `text-base capitalize ${textColor}` : `text-base ${textMuted}`}>
-                   {formData.projectId ? projects.find(p => p._id === formData.projectId)?.name || projects.find(p => p._id === formData.projectId)?.projectName || 'Unknown' : 'Select a project'}
-                 </Text>
-                 <ChevronDown size={20} color={isDarkMode ? "#888" : "#9ca3af"} />
-              </TouchableOpacity>
+               <View className="flex-row justify-between mb-4">
+                 <View className="flex-1 mr-2">
+                   <Text className={`text-[10px] font-bold mb-2 uppercase tracking-widest ${textMuted}`}>Priority</Text>
+                   <TouchableOpacity onPress={() => { setDropdownType('addPriority'); setDropdownVisible(true); }} className={`border rounded p-3 flex-row justify-between items-center ${bgInputAlt} ${borderColor}`}>
+                      <Text className={`text-xs ${textColor}`}>{formData.priority.charAt(0) + formData.priority.slice(1).toLowerCase()}</Text>
+                      <ChevronDown size={14} color={isDarkMode ? "#888" : "#9ca3af"} />
+                   </TouchableOpacity>
+                 </View>
+                 <View className="flex-1 ml-2">
+                   <Text className={`text-[10px] font-bold mb-2 uppercase tracking-widest ${textMuted}`}>Status</Text>
+                   <TouchableOpacity onPress={() => { setDropdownType('addStatus'); setDropdownVisible(true); }} className={`border rounded p-3 flex-row justify-between items-center ${bgInputAlt} ${borderColor}`}>
+                      <Text className={`text-xs ${textColor}`}>{formData.status.replace('_', ' ')}</Text>
+                      <ChevronDown size={14} color={isDarkMode ? "#888" : "#9ca3af"} />
+                   </TouchableOpacity>
+                 </View>
+               </View>
+
+               <Text className={`text-[10px] font-bold mb-2 uppercase tracking-widest ${textMuted}`}>Proof Required</Text>
+               <View className="flex-row mb-4">
+                  <TouchableOpacity onPress={() => setFormData({...formData, proofRequired: true})} className={`flex-1 py-3 border rounded-l ${formData.proofRequired ? (isDarkMode ? 'bg-[#adc6ff] border-[#adc6ff]' : 'bg-[#2573e6] border-[#2573e6]') : (bgInputAlt + ' ' + borderColor)}`}>
+                     <Text className={`text-[10px] text-center font-bold tracking-widest uppercase ${formData.proofRequired ? (isDarkMode ? 'text-[#131313]' : 'text-white') : textColor}`}>Yes</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setFormData({...formData, proofRequired: false})} className={`flex-1 py-3 border border-l-0 rounded-r ${!formData.proofRequired ? (isDarkMode ? 'bg-[#adc6ff] border-[#adc6ff]' : 'bg-[#2573e6] border-[#2573e6]') : (bgInputAlt + ' ' + borderColor)}`}>
+                     <Text className={`text-[10px] text-center font-bold tracking-widest uppercase ${!formData.proofRequired ? (isDarkMode ? 'text-[#131313]' : 'text-white') : textColor}`}>No</Text>
+                  </TouchableOpacity>
+               </View>
+
+               <Text className={`text-[10px] font-bold mb-2 uppercase tracking-widest ${textMuted}`}>Start - End</Text>
+               <TouchableOpacity onPress={() => setShowDatePicker(true)} className={`border rounded p-3 mb-6 flex-row items-center ${bgInputAlt} ${borderColor}`}>
+                  <Calendar size={14} color={isDarkMode ? "#888" : "#9ca3af"} className="mr-2" />
+                  <Text className={`text-xs ${textColor}`}>Select start and end date/time</Text>
+               </TouchableOpacity>
+
             </ScrollView>
 
-            <View className={`flex-row justify-end pt-4 border-t mt-2 pb-6 ${borderColor}`}>
-               <TouchableOpacity onPress={() => setAddModalVisible(false)} className="mr-4 py-3 px-4"><Text className={`font-bold text-sm uppercase ${textColor}`}>Cancel</Text></TouchableOpacity>
-               <TouchableOpacity onPress={handleSave} disabled={saving} className={`px-6 py-3 rounded-lg flex-row items-center ${isDarkMode ? 'bg-[#adc6ff]' : 'bg-[#2573e6]'}`}>
-                  {saving ? <ActivityIndicator size="small" color={isDarkMode ? "#131313" : "#ffffff"} /> : <Text className={`font-bold text-sm uppercase tracking-wider ${isDarkMode ? 'text-[#131313]' : 'text-white'}`}>Save Task</Text>}
+            <View className="flex-row justify-between pt-4 mt-2 border-t border-[#333]">
+               <TouchableOpacity onPress={() => setAddModalVisible(false)} className={`flex-1 mr-2 py-3 border rounded items-center ${borderColor} ${bgInputAlt}`}>
+                  <Text className={`font-bold text-xs uppercase tracking-widest ${textColor}`}>Cancel</Text>
+               </TouchableOpacity>
+               <TouchableOpacity onPress={handleSave} disabled={saving} className={`flex-1 ml-2 py-3 rounded items-center flex-row justify-center ${isDarkMode ? 'bg-[#adc6ff]' : 'bg-[#2573e6]'}`}>
+                  {saving ? <ActivityIndicator size="small" color={isDarkMode ? "#131313" : "#ffffff"} /> : (
+                     <>
+                        <Check size={14} color={isDarkMode ? "#131313" : "#ffffff"} className="mr-1" />
+                        <Text className={`font-bold text-xs uppercase tracking-widest ${isDarkMode ? 'text-[#131313]' : 'text-white'}`}>Assign Task</Text>
+                     </>
+                  )}
                </TouchableOpacity>
             </View>
           </View>
@@ -608,6 +723,15 @@ export default function TasksScreen() {
           keyExtractor={(item, index) => item._id || index.toString()}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
+          onEndReached={() => {
+            if (hasMore && !loadingMore && !loading) {
+              fetchTasks(page + 1);
+            }
+          }}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            loadingMore ? <ActivityIndicator size="small" color={isDarkMode ? "#adc6ff" : "#2573e6"} className="my-4" /> : null
+          }
           ListEmptyComponent={
             <View className={`items-center justify-center mt-10 p-6 border rounded-lg ${bgCard} ${borderColor}`}>
                <View className={`h-12 w-12 rounded-full items-center justify-center mb-4 ${bgInputDeep}`}>
@@ -628,7 +752,7 @@ export default function TasksScreen() {
           <View className={`border rounded-lg w-5/6 max-h-[60%] p-2 ${bgCard} ${borderColor}`}>
             <FlatList
               data={getDropdownOptions()}
-              keyExtractor={(item) => item._id || 'none'}
+              keyExtractor={(item, index) => item._id ? item._id + '_' + index : index.toString()}
               renderItem={({item}) => {
                 let isSelected = false;
                 if (dropdownType === 'project') isSelected = formData.projectId === item._id;
@@ -669,7 +793,7 @@ export default function TasksScreen() {
             </View>
             <FlatList
               data={safeTasks.filter(t => (t.title || t.name || '').toLowerCase().includes(timeSearchQuery.toLowerCase()))}
-              keyExtractor={(item) => item._id || item.id}
+              keyExtractor={(item, index) => (item._id || item.id) ? (item._id || item.id) + '_' + index : index.toString()}
               contentContainerStyle={{ padding: 10 }}
               renderItem={({item}) => (
                 <View className={`py-3 px-3 border-b flex-row items-center justify-between ${borderColor}`}>

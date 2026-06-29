@@ -10,6 +10,8 @@ export default function ProjectsScreen() {
   const [departments, setDepartments] = useState([]);
   const [categories, setCategories] = useState([]);
   const [users, setUsers] = useState([]);
+  const [projectTimeMap, setProjectTimeMap] = useState({});
+  const [projectTasksCountMap, setProjectTasksCountMap] = useState({});
   const [loading, setLoading] = useState(true);
 
   // Filters
@@ -30,21 +32,75 @@ export default function ProjectsScreen() {
   const [saving, setSaving] = useState(false);
   
   const [dropdownVisible, setDropdownVisible] = useState(false);
-  const [dropdownType, setDropdownType] = useState(''); 
+  const [dropdownType, setDropdownType] = useState('');
+  const [timeModalVisible, setTimeModalVisible] = useState(false); 
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [projRes, depRes, catRes, userRes] = await Promise.all([
+      const [projRes, depRes, catRes, userRes, taskRes] = await Promise.all([
         client.get('/projects?limit=500'),
         client.get('/departments?limit=100'),
         client.get('/categories'),
-        client.get('/users?limit=500')
+        client.get('/users?limit=500'),
+        null /* replaced by loop below */
       ]);
       setProjects(projRes.data.data || projRes.data || []);
       setDepartments(depRes.data.allDepartments || depRes.data.data || []);
       setCategories(catRes.data.data || catRes.data || []);
       setUsers(userRes.data.data || userRes.data.users || []);
+      let allTasks = [];
+      let page = 1;
+      while (true) {
+        try {
+          const res = await client.get(`/tasks?limit=100&page=${page}`);
+          const batch = res.data.data || res.data || [];
+          allTasks = allTasks.concat(batch);
+          if (!res.data.pagination || page >= res.data.pagination.pages) break;
+          page++;
+        } catch (e) {
+          break;
+        }
+      }
+      const timeMap = {};
+      const countMap = {};
+      allTasks.forEach(t => {
+         const pId = t.projectId?._id || t.projectId;
+         if (!pId) return;
+         if (!timeMap[pId]) timeMap[pId] = 0;
+         if (!countMap[pId]) countMap[pId] = { total: 0, completed: 0 };
+         
+         countMap[pId].total += 1;
+         if (t.status === 'COMPLETED' || t.status === 'DONE') {
+             countMap[pId].completed += 1;
+         }
+         let taskTotalMs = 0;
+         if (t.employeeProgress && t.employeeProgress.length > 0) {
+            t.employeeProgress.forEach(p => {
+               if (Array.isArray(p.sessions) && p.sessions.length > 0) {
+                 p.sessions.forEach(s => {
+                   const st = s.start ? new Date(s.start).getTime() : null;
+                   const en = s.end ? new Date(s.end).getTime() : null;
+                   if (st && en && !isNaN(st) && !isNaN(en) && en > st) taskTotalMs += (en - st);
+                 });
+               } else if (p.startedAt || p.started_at) {
+                 const st = new Date(p.startedAt || p.started_at).getTime();
+                 const enDate = p.completedAt || p.completed_at;
+                 if (!isNaN(st)) {
+                   if (enDate) {
+                     const en = new Date(enDate).getTime();
+                     if (!isNaN(en) && en > st) taskTotalMs += (en - st);
+                   } else {
+                     taskTotalMs += (Date.now() - st);
+                   }
+                 }
+               }
+            });
+         }
+         timeMap[pId] += taskTotalMs;
+      });
+      setProjectTimeMap(timeMap);
+      setProjectTasksCountMap(countMap);
     } catch (error) {
       console.error("Failed to load projects data", error);
     } finally {
@@ -175,50 +231,28 @@ export default function ProjectsScreen() {
     
     const isOverdue = item.endDate && new Date(item.endDate) < new Date() && !isCompleted;
 
+    const getUserId = (idOrObj) => (typeof idOrObj === 'object' && idOrObj !== null) ? (idOrObj._id || idOrObj.id) : idOrObj;
+
     let leadName = 'No manager';
     if (item.managerIds && item.managerIds.length > 0) {
-      const mId = typeof item.managerIds[0] === 'object' ? (item.managerIds[0]._id || item.managerIds[0].id) : item.managerIds[0];
+      const mId = getUserId(item.managerIds[0]);
       const manager = users.find(u => u._id === mId) || (typeof item.managerIds[0] === 'object' ? item.managerIds[0] : null);
       if (manager && manager.name) leadName = manager.name;
     }
     
     const deadlineStr = item.endDate ? new Date(item.endDate).toLocaleDateString() : '—';
-    const totalTasksItem = item.modules || item.totalTasks || 0;
-    const completedTasksItem = item.modulesCompleted || item.completedTasks || 0;
+    const counts = projectTasksCountMap[item._id] || { total: 0, completed: 0 };
+    const totalTasksItem = counts.total || item.modules || item.totalTasks || 0;
+    const completedTasksItem = counts.completed || item.modulesCompleted || item.completedTasks || 0;
     const progressPercent = totalTasksItem > 0 ? Math.round((completedTasksItem / totalTasksItem) * 100) : (item.progress || 0);
 
-    if (viewMode === 'list') {
-      return (
-        <TouchableOpacity onPress={() => { setSelectedProject(item); setDetailsModalVisible(true); }} className={`rounded-lg p-4 mb-2 border flex-row items-center justify-between ${bgCard} ${borderColor}`}>
-           <View className="flex-1 flex-row items-center">
-              <FolderKanban size={14} color={isDarkMode ? "#adc6ff" : "#2573e6"} className="mr-3" />
-              <View className="flex-1">
-                 <Text className={`text-sm font-bold truncate ${textColor}`} numberOfLines={1}>{pName}</Text>
-                 <Text className={`text-[10px] uppercase font-bold tracking-widest mt-0.5 ${textMuted}`}>{dName}</Text>
-              </View>
-           </View>
-           
-           <View className="flex-1 px-2 justify-center hidden sm:flex">
-              <Text className={`text-xs ${textColor}`}>{leadName}</Text>
-           </View>
-           
-           <View className="w-24 px-2 justify-center items-end">
-              <View className={`px-2 py-1 rounded`} style={{ backgroundColor: statusBg, borderColor: `${statusColor}4a`, borderWidth: 1 }}>
-                <Text className={`text-[9px] font-bold uppercase tracking-wider`} style={{ color: statusColor }}>
-                  {isCompleted ? 'COMPLETED' : 'IN PROGRESS'}
-                </Text>
-              </View>
-              {isOverdue && (
-                 <View className={`px-2 py-0.5 rounded mt-1 border ${isDarkMode ? 'bg-[#ef44441a] border-[#ef44444a]' : 'bg-red-50 border-red-200'}`}>
-                    <Text className="text-[#ef4444] text-[8px] font-bold uppercase tracking-widest">OVERDUE</Text>
-                 </View>
-              )}
-           </View>
-        </TouchableOpacity>
-      );
-    }
+    const totalMs = projectTimeMap[item._id] || 0;
+    const totalHours = (totalMs / (1000 * 60 * 60)).toFixed(2);
+    
+    const reviewersCount = (item.testerIds || []).length;
+    const contributorsCount = (item.developerIds || []).length;
+    const totalMembers = reviewersCount + contributorsCount;
 
-    // Grid View
     return (
       <TouchableOpacity onPress={() => { setSelectedProject(item); setDetailsModalVisible(true); }} className={`rounded-lg p-5 mb-4 border ${isDarkMode ? 'bg-[#131313]' : 'bg-gray-50'} ${borderColor}`}>
         <View className="flex-row justify-between items-start mb-4">
@@ -241,13 +275,18 @@ export default function ProjectsScreen() {
         </View>
         
         <View className="mb-2 flex-row justify-between">
-           <Text className={`text-[10px] font-bold uppercase tracking-widest ${textMuted}`}>Manager</Text>
+           <Text className={`text-[10px] font-bold uppercase tracking-widest ${textMuted}`}>Lead</Text>
            <Text className={`text-xs ${textColor}`}>{leadName}</Text>
         </View>
 
         <View className="mb-2 flex-row justify-between">
-           <Text className={`text-[10px] font-bold uppercase tracking-widest ${textMuted}`}>Progress</Text>
-           <Text className={`text-xs ${textColor}`}>{progressPercent}%</Text>
+           <Text className={`text-[10px] font-bold uppercase tracking-widest ${textMuted}`}>Members</Text>
+           <Text className={`text-xs ${textColor}`}>{totalMembers} Users</Text>
+        </View>
+
+        <View className="mb-2 flex-row justify-between">
+           <Text className={`text-[10px] font-bold uppercase tracking-widest ${textMuted}`}>Total Time</Text>
+           <Text className={`text-xs ${textColor}`}>{totalHours}hr</Text>
         </View>
 
         <View className="mb-4 flex-row justify-between">
@@ -257,8 +296,8 @@ export default function ProjectsScreen() {
 
         <View className="mt-2">
            <View className="flex-row justify-between mb-1">
-              <Text className={`text-[10px] font-bold uppercase tracking-widest ${textMuted}`}>Completion</Text>
-              <Text className={`text-[10px] ${textColor}`}>{progressPercent}%</Text>
+              <Text className={`text-[10px] font-bold uppercase tracking-widest ${textMuted}`}>Progress</Text>
+              <Text className={`text-[10px] ${textColor}`}>{completedTasksItem}/{totalTasksItem} ({progressPercent}%)</Text>
            </View>
            <View className={`h-1 rounded overflow-hidden ${isDarkMode ? 'bg-[#1c1b1b]' : 'bg-gray-200'}`}>
               <View className={`h-full rounded ${isDarkMode ? 'bg-[#adc6ff]' : 'bg-[#2573e6]'}`} style={{ width: `${progressPercent}%` }} />
@@ -437,7 +476,15 @@ export default function ProjectsScreen() {
                className={`flex-1 text-xs h-10 ${textColor}`}
             />
          </View>
-         <View className="flex-row justify-between items-center">
+         
+         <View className="flex-row justify-between items-center mt-2">
+            <TouchableOpacity onPress={() => setTimeModalVisible(true)} className={`flex-row items-center border rounded px-3 py-2 flex-1 ${bgInput} ${borderColor}`}>
+               <Clock size={14} color={isDarkMode ? "#adc6ff" : "#2573e6"} className="mr-2" />
+               <Text className={`text-[10px] font-bold uppercase tracking-widest ${textColor}`}>Total Time Spent on Each Project</Text>
+            </TouchableOpacity>
+         </View>
+
+         <View className="flex-row justify-between items-center mt-2">
             <View className="flex-row flex-1 mr-2">
                <TouchableOpacity onPress={() => { setDropdownType('filterStatus'); setDropdownVisible(true); }} className={`flex-1 border rounded px-2 h-8 flex-row items-center justify-between mr-2 ${bgInput} ${borderColor}`}>
                  <Text className={`text-[10px] uppercase font-bold tracking-widest ${textColor}`}>{filterStatus === 'ALL' ? 'ALL STATUS' : filterStatus.replace('_', ' ')}</Text>
@@ -587,7 +634,7 @@ export default function ProjectsScreen() {
           <View className={`border rounded-lg w-5/6 max-h-[60%] p-2 ${bgCard} ${borderColor}`}>
             <FlatList
               data={getDropdownOptions()}
-              keyExtractor={(item) => item._id || 'none'}
+              keyExtractor={(item, index) => item._id ? item._id + '_' + index : index.toString()}
               renderItem={({item}) => {
                 let isSelected = false;
                 if (dropdownType === 'department') isSelected = formData.departmentId === item._id;
@@ -612,6 +659,35 @@ export default function ProjectsScreen() {
 
       {/* Details Modal */}
       {renderDetailsModal()}
+  
+      {/* Total Time Spent Modal */}
+      <Modal visible={timeModalVisible} transparent animationType="fade">
+        <View className="flex-1 justify-center items-center bg-[#000000cc]">
+          <View className={`border rounded-lg w-11/12 p-6 max-h-[80%] ${bgCard} ${borderColor}`}>
+            <View className="flex-row justify-between items-center mb-6">
+               <Text className={`text-sm font-bold tracking-widest uppercase ${textColor}`}>Total Time Spent</Text>
+               <TouchableOpacity onPress={() => setTimeModalVisible(false)}><X size={20} color={isDarkMode ? "#888" : "#6b7280"} /></TouchableOpacity>
+            </View>
+            <ScrollView className="mb-4">
+               {projects.map(p => {
+                  const ms = projectTimeMap[p._id] || 0;
+                  const hrs = (ms / (1000 * 60 * 60)).toFixed(2);
+                  return (
+                     <View key={p._id} className={`p-3 border-b flex-row justify-between items-center ${borderColor}`}>
+                        <Text className={`text-xs font-bold ${textColor} flex-1 mr-2`} numberOfLines={1}>{p.name || p.projectName}</Text>
+                        <Text className={`text-xs font-bold ${isDarkMode ? 'text-[#adc6ff]' : 'text-[#2573e6]'}`}>{hrs} hr</Text>
+                     </View>
+                  );
+               })}
+               {projects.length === 0 && <Text className={`text-center text-xs mt-4 ${textMuted}`}>No projects found.</Text>}
+            </ScrollView>
+            <View className={`flex-row justify-end border-t mt-2 pt-4 ${borderColor}`}>
+               <TouchableOpacity onPress={() => setTimeModalVisible(false)} className="mr-4 py-2"><Text className={`font-bold text-xs uppercase tracking-widest ${textMuted}`}>Close</Text></TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
 
     </View>
   );

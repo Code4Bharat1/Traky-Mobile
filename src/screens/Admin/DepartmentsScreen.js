@@ -31,8 +31,19 @@ export default function DepartmentsScreen() {
         client.get('/departments?limit=100'),
         client.get('/users?limit=500')
       ]);
-      setDepartments(depRes.data.allDepartments || depRes.data.data || []);
-      setUsers(usersRes.data.data || usersRes.data.users || []);
+      const rawDepts = depRes.data.allDepartments || depRes.data.data || [];
+      const rawUsers = usersRes.data.data || usersRes.data.users || [];
+      
+      const deptsWithHeads = rawDepts.map(d => {
+         const headUser = rawUsers.find(u => 
+            String(u.departmentId) === String(d._id) && 
+            (u.globalRole === 'department_head' || u.role?.name === 'department_head' || u.role === 'department_head')
+         );
+         return { ...d, head: headUser || null };
+      });
+
+      setDepartments(deptsWithHeads);
+      setUsers(rawUsers);
     } catch (error) {
       console.error("Failed to load departments data", error);
     } finally {
@@ -121,13 +132,8 @@ export default function DepartmentsScreen() {
      setAssignHeadModalVisible(true);
   };
 
-  // Find department heads by scanning users
-  const getDepartmentHead = (deptId) => {
-     return users.find(u => u.departmentId === deptId && (u.globalRole === 'department_head' || u.globalRole === 'lead'));
-  };
-
   const filteredDepartments = (Array.isArray(departments) ? departments : []).filter(d => {
-    const head = getDepartmentHead(d._id);
+    const head = d.head;
     const matchesSearch = d.departmentName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           (head?.name && head.name.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesSearch;
@@ -148,7 +154,7 @@ export default function DepartmentsScreen() {
   const textMuted = isDarkMode ? 'text-[#888]' : 'text-gray-500';
 
   const renderItem = ({ item }) => {
-    const head = getDepartmentHead(item._id);
+    const head = item.head;
     
     return (
       <View className={`rounded-lg p-5 mb-4 border ${bgCard} ${borderColor}`}>
@@ -238,7 +244,7 @@ export default function DepartmentsScreen() {
       ) : (
         <FlatList 
           data={filteredDepartments}
-          keyExtractor={(item) => item._id}
+          keyExtractor={(item, index) => item._id ? item._id + '_' + index : index.toString()}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={

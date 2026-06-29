@@ -17,13 +17,20 @@ export default function AdminHeader({ navigation, title }) {
     { id: 'nexcore', name: 'Nexcore Education', code: 'DT001' }
   ];
 
-  const [notifications, setNotifications] = useState([
-    { id: 1, title: 'Task overdue: "erty"', desc: 'Deadline was Jun 24, 2026.', time: '1 day ago', read: false },
-    { id: 2, title: 'Task overdue: "FSD Lecture and mycoachi..."', desc: 'Deadline was Jun 23, 2026.', time: '2 days ago', read: false },
-    { id: 3, title: 'Task overdue: "Kokani Rishtey frontend tes..."', desc: 'Deadline was Jun 23, 2026.', time: '2 days ago', read: false },
-    { id: 4, title: 'Task overdue: "ARTWORK"', desc: 'Deadline was Jun 23, 2026.', time: '2 days ago', read: false },
-    { id: 5, title: 'Task overdue: "SCRIPTING OF REELS"', desc: 'Deadline was Jun 23, 2026.', time: '2 days ago', read: false },
-  ]);
+  const [notifications, setNotifications] = useState([]);
+  
+  React.useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const client = require('../api/client').default;
+        const res = await client.get('/notifications?limit=20');
+        setNotifications(res.data.notifications || res.data.data || (Array.isArray(res.data) ? res.data : []));
+      } catch (err) {
+        console.log('Failed to fetch notifications', err);
+      }
+    };
+    fetchNotifications();
+  }, []);
 
   const markAllAsRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
@@ -39,8 +46,10 @@ export default function AdminHeader({ navigation, title }) {
   const userEmail = user?.email || 'tiwariv31@proton.me';
   const initials = userName.substring(0, 3).toUpperCase();
 
-  const allRead = notifications.length === 0 || notifications.every(n => n.read);
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const safeNotifications = Array.isArray(notifications) ? notifications : [];
+  const allRead = safeNotifications.length === 0 || safeNotifications.every(n => n.read);
+  const unreadCount = safeNotifications.filter(n => !n.read).length;
+  
 
   return (
     <View className={`flex-row items-center justify-between border-b px-4 pt-12 pb-3 ${isDarkMode ? 'bg-[#131313] border-[#ffffff1a]' : 'bg-white border-gray-200'}`}>
@@ -134,9 +143,9 @@ export default function AdminHeader({ navigation, title }) {
                   <View className="flex-row items-center">
                     <Bell color={isDarkMode ? "#ccc" : "#333"} size={14} className="mr-2" />
                     <Text className={`text-xs font-bold tracking-wider ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>NOTIFICATIONS</Text>
-                    {notifications.length > 0 && (
+                    {safeNotifications.length > 0 && (
                       <View className="bg-[#2573e6] px-1.5 py-0.5 rounded-full ml-2">
-                        <Text className="text-white text-[10px] font-bold">{notifications.length}</Text>
+                        <Text className="text-white text-[10px] font-bold">{safeNotifications.length}</Text>
                       </View>
                     )}
                   </View>
@@ -153,8 +162,8 @@ export default function AdminHeader({ navigation, title }) {
                   </View>
                 </View>
                 <ScrollView style={{ maxHeight: 350 }}>
-                  {notifications.map((n) => (
-                    <TouchableOpacity key={n.id} className={`flex-row px-4 py-3 border-b ${isDarkMode ? 'border-[#333]' : 'border-gray-100'}`}>
+                  {safeNotifications.map((n, index) => (
+                    <TouchableOpacity key={n.id || index.toString()} className={`flex-row px-4 py-3 border-b ${isDarkMode ? 'border-[#333]' : 'border-gray-100'}`}>
                       <View className={`w-8 h-8 rounded-full items-center justify-center mr-3 ${isDarkMode ? 'bg-[#2a2a2a]' : 'bg-blue-50'}`}>
                          <ListFilter color={isDarkMode ? (n.read ? '#555' : '#adc6ff') : (n.read ? '#aaa' : '#2573e6')} size={14} />
                       </View>
@@ -166,7 +175,7 @@ export default function AdminHeader({ navigation, title }) {
                       {!n.read && <View className="w-2 h-2 rounded-full bg-[#2573e6] mt-1.5" />}
                     </TouchableOpacity>
                   ))}
-                  {notifications.length === 0 && (
+                  {safeNotifications.length === 0 && (
                      <View className="p-4 items-center justify-center">
                         <Text className={`text-sm ${isDarkMode ? 'text-[#888]' : 'text-gray-500'}`}>No notifications</Text>
                      </View>
