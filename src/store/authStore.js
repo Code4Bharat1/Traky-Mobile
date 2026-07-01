@@ -30,9 +30,15 @@ const useAuthStore = create((set, get) => ({
 
       set({ user, role, isLoading: false, error: null });
     } catch (error) {
-      console.warn('Auth initialization session ended or invalid:', error.message);
+      const isNetworkError = error.message === 'Network Error' || error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED';
+      if (isNetworkError) {
+        // Server unreachable — clear stale token and go to login
+        console.warn('Server unreachable on startup, clearing session:', error.message);
+      } else {
+        console.warn('Auth initialization session ended or invalid:', error.message);
+      }
       await AsyncStorage.removeItem('token');
-      set({ user: null, role: null, token: null, isLoading: false, error: 'Session expired' });
+      set({ user: null, role: null, token: null, isLoading: false, error: null });
     }
   },
 
@@ -56,7 +62,16 @@ const useAuthStore = create((set, get) => ({
         data: error.response?.data,
         message: error.message
       });
-      const msg = error.response?.data?.error || error.response?.data?.message || 'Login failed';
+
+      let msg;
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        msg = 'Request timed out. Check that the server is running.';
+      } else if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
+        msg = 'Cannot reach server. Make sure the backend is running and your device is on the same Wi-Fi network.';
+      } else {
+        msg = error.response?.data?.error || error.response?.data?.message || 'Login failed. Please try again.';
+      }
+
       set({ isLoading: false, error: msg });
     }
   },

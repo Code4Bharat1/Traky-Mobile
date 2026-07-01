@@ -1,6 +1,10 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { createDrawerNavigator, DrawerContentScrollView } from '@react-navigation/drawer';
+import { View, Text } from 'react-native';
+import {
+  createDrawerNavigator,
+  DrawerContentScrollView,
+  DrawerItem,
+} from '@react-navigation/drawer';
 import {
   LayoutDashboard,
   FolderKanban,
@@ -18,209 +22,180 @@ import {
   LogOut,
 } from 'lucide-react-native';
 import useAuthStore from '../store/authStore';
+import useThemeStore from '../store/themeStore';
 
-// ── Screens ────────────────────────────────────────────────────────────────────
-import DeptHeadDashboard      from '../screens/DeptHead/DeptHeadDashboard';
-import ProjectsScreen         from '../screens/DeptHead/ProjectsScreen';
-import TasksScreen            from '../screens/DeptHead/TasksScreen';
-import IssuesScreen           from '../screens/DeptHead/IssuesScreen';
-import EmployeeScreen         from '../screens/DeptHead/EmployeeScreen';
-import TeamAttendanceScreen   from '../screens/DeptHead/TeamAttendanceScreen';
-import LeaveApprovalsScreen   from '../screens/DeptHead/LeaveApprovalsScreen';
-import ExpensesScreen         from '../screens/DeptHead/ExpensesScreen';
-import LeaderboardScreen      from '../screens/DeptHead/LeaderboardScreen';
-import DailyLogsScreen        from '../screens/DeptHead/DailyLogsScreen';
-import KTDocumentsScreen      from '../screens/DeptHead/KTDocumentsScreen';
-import ReportsScreen          from '../screens/DeptHead/ReportsScreen';
-import EmployeeReportScreen   from '../screens/DeptHead/EmployeeReportScreen';
-import NotificationsScreen    from '../screens/DeptHead/NotificationsScreen';
+import DeptHeadTabNavigator from './DeptHeadTabNavigator';
 
 const Drawer = createDrawerNavigator();
 
-// ── Sidebar config — mirrors web dept-head NAV_ITEMS exactly ──────────────────
-const NAV_ITEMS = [
-  { name: 'Dashboard',       label: 'DASHBOARD',        Icon: LayoutDashboard, component: DeptHeadDashboard },
-  { name: 'Projects',        label: 'PROJECTS',          Icon: FolderKanban,    component: ProjectsScreen },
-  { name: 'Tasks',           label: 'TASKS',             Icon: ListTodo,        component: TasksScreen },
-  { name: 'Issues',          label: 'ISSUES',            Icon: Bug,             component: IssuesScreen },
-  { name: 'Employee',        label: 'EMPLOYEE',          Icon: Users,           component: EmployeeScreen },
-  { name: 'TeamAttendance',  label: 'TEAM ATTENDANCE',   Icon: Users2,          component: TeamAttendanceScreen },
-  { name: 'LeaveApprovals',  label: 'LEAVE APPROVALS',   Icon: Umbrella,        component: LeaveApprovalsScreen },
-  { name: 'Expenses',        label: 'EXPENSES',          Icon: CreditCard,      component: ExpensesScreen },
-  { name: 'Leaderboard',     label: 'LEADERBOARD',       Icon: BarChart3,       component: LeaderboardScreen },
-  { name: 'DailyLogs',       label: 'DAILY LOGS',        Icon: BookCheck,       component: DailyLogsScreen },
-  { name: 'KTDocuments',     label: 'KT DOCUMENTS',      Icon: BookOpen,        component: KTDocumentsScreen },
-  { name: 'Reports',         label: 'REPORTS',           Icon: FileText,        component: ReportsScreen },
-  { name: 'EmployeeReport',  label: 'EMPLOYEE REPORT',   Icon: BarChart3,       component: EmployeeReportScreen },
-  { name: 'Notifications',   label: 'NOTIFICATIONS',     Icon: Bell,            component: NotificationsScreen },
+// ── Drawer menu items — mirrors the DeptHead permission scope exactly ──────────
+const MENU_ITEMS = [
+  { label: 'DASHBOARD',       icon: LayoutDashboard, screen: 'DeptHeadDashboardMain', tab: 'DashboardTab' },
+  { label: 'PROJECTS',        icon: FolderKanban,    screen: 'Projects',              tab: 'DashboardTab' },
+  { label: 'TASKS',           icon: ListTodo,        screen: 'Tasks',                 tab: null           }, // direct tab
+  { label: 'ISSUES',          icon: Bug,             screen: 'Issues',                tab: 'DashboardTab' },
+  { label: 'EMPLOYEES',       icon: Users,           screen: 'Employee',              tab: 'DashboardTab' },
+  { label: 'TEAM ATTENDANCE', icon: Users2,          screen: 'TeamAttendance',        tab: 'DashboardTab' },
+  { label: 'LEAVE APPROVALS', icon: Umbrella,        screen: 'LeaveApprovals',        tab: 'DashboardTab' },
+  { label: 'EXPENSES',        icon: CreditCard,      screen: 'Expenses',              tab: 'DashboardTab' },
+  { label: 'LEADERBOARD',     icon: BarChart3,       screen: 'Leaderboard',           tab: null           }, // direct tab
+  { label: 'DAILY LOGS',      icon: BookCheck,       screen: 'DailyLogs',             tab: null           }, // direct tab
+  { label: 'KT DOCUMENTS',    icon: BookOpen,        screen: 'KTDocuments',           tab: 'DashboardTab' },
+  { label: 'REPORTS',         icon: FileText,        screen: 'Reports',               tab: 'DashboardTab' },
+  { label: 'EMPLOYEE REPORT', icon: BarChart3,       screen: 'EmployeeReport',        tab: 'DashboardTab' },
+  { label: 'NOTIFICATIONS',   icon: Bell,            screen: 'Notifications',         tab: null           }, // direct tab
 ];
 
-// ── Custom Drawer Content ─────────────────────────────────────────────────────
-function DeptHeadDrawerContent(props) {
-  const { navigation, state } = props;
-  const { logout, user } = useAuthStore();
-  const activeIndex = state.index;
+// Screens that are direct tab routes (not nested inside DashboardTab/MainStack)
+const DIRECT_TABS = ['Tasks', 'Leaderboard', 'DailyLogs', 'Notifications'];
 
-  const initials = user?.name
-    ? user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
-    : 'DH';
-
-  return (
-    <View style={styles.drawerContainer}>
-      {/* ── Header ── */}
-      <View style={styles.drawerHeader}>
-        <Text style={styles.drawerBrand}>TRAKY</Text>
-        <Text style={styles.drawerSubtitle}>DEPT HEAD PORTAL</Text>
-      </View>
-
-      {/* ── Nav Items ── */}
-      <DrawerContentScrollView
-        {...props}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {NAV_ITEMS.map((item, index) => {
-          const isActive = activeIndex === index;
-          return (
-            <TouchableOpacity
-              key={item.name}
-              onPress={() => navigation.navigate(item.name)}
-              style={[styles.navItem, isActive && styles.navItemActive]}
-              activeOpacity={0.7}
-            >
-              <item.Icon
-                size={18}
-                color={isActive ? '#131313' : '#c2c6d6'}
-                strokeWidth={1.75}
-              />
-              <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </DrawerContentScrollView>
-
-      {/* ── Sign Out ── */}
-      <TouchableOpacity
-        style={styles.signOutBtn}
-        onPress={logout}
-        activeOpacity={0.8}
-      >
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initials}</Text>
-        </View>
-        <LogOut size={16} color="#ef4444" strokeWidth={1.75} style={{ marginLeft: 8 }} />
-        <Text style={styles.signOutLabel}>SIGN OUT</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-// ── Navigator ─────────────────────────────────────────────────────────────────
 export default function DeptHeadNavigator() {
+  const { user, logout } = useAuthStore();
+  const { isDarkMode }   = useThemeStore();
+
   return (
     <Drawer.Navigator
-      drawerContent={(props) => <DeptHeadDrawerContent {...props} />}
+      drawerContent={(props) => {
+        // Determine active screen to highlight the correct drawer item
+        const activeRoute = props.state.routes[props.state.index];
+        let activeScreen = null;
+
+        if (activeRoute.name === 'DeptHeadTabs' && activeRoute.state) {
+          const currentTab = activeRoute.state.routes[activeRoute.state.index || 0];
+          if (currentTab.name === 'DashboardTab' && currentTab.state) {
+            activeScreen = currentTab.state.routes[currentTab.state.index || 0].name;
+          } else {
+            activeScreen = currentTab.name;
+          }
+        } else {
+          activeScreen = 'DeptHeadDashboardMain';
+        }
+
+        return (
+          <DrawerContentScrollView
+            {...props}
+            contentContainerStyle={{ flexGrow: 1, paddingTop: 0 }}
+          >
+            {/* ── Header ── */}
+            <View
+              style={{
+                paddingHorizontal: 20,
+                paddingTop: 56,
+                paddingBottom: 24,
+                borderBottomWidth: 1,
+                borderBottomColor: isDarkMode ? '#2a2a2a' : '#e5e7eb',
+                marginBottom: 8,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
+              }}
+            >
+              <View
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: '#7c3aed',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Users size={16} color="#ffffff" />
+              </View>
+              <View>
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontWeight: '900',
+                    color: isDarkMode ? '#ffffff' : '#111827',
+                    letterSpacing: 2,
+                  }}
+                >
+                  TRAKY
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontWeight: '600',
+                    color: '#6b7280',
+                    letterSpacing: 1.5,
+                    marginTop: 2,
+                  }}
+                >
+                  DEPT HEAD PORTAL
+                </Text>
+              </View>
+            </View>
+
+            {/* ── Menu Items ── */}
+            {MENU_ITEMS.map((item, index) => {
+              const isFocused = activeScreen === item.screen;
+              const Icon = item.icon;
+
+              return (
+                <DrawerItem
+                  key={index}
+                  label={item.label}
+                  icon={({ color, size }) => <Icon color={color} size={size} />}
+                  labelStyle={{ fontWeight: 'bold', fontSize: 13, letterSpacing: 1 }}
+                  focused={isFocused}
+                  activeTintColor={isDarkMode ? '#131313' : '#2573e6'}
+                  activeBackgroundColor={isDarkMode ? '#adc6ff' : '#ebf3fc'}
+                  inactiveTintColor={isDarkMode ? '#c2c6d6' : '#6b7280'}
+                  onPress={() => {
+                    if (DIRECT_TABS.includes(item.screen)) {
+                      // Navigate directly to the tab
+                      props.navigation.navigate('DeptHeadTabs', {
+                        screen: item.screen,
+                      });
+                    } else {
+                      // Navigate into the DashboardTab's MainStack
+                      props.navigation.navigate('DeptHeadTabs', {
+                        screen: 'DashboardTab',
+                        params: { screen: item.screen },
+                      });
+                    }
+                  }}
+                />
+              );
+            })}
+
+            {/* ── Sign Out ── */}
+            <DrawerItem
+              label="SIGN OUT"
+              icon={({ size }) => <LogOut color="#ef4444" size={size} />}
+              labelStyle={{
+                fontWeight: 'bold',
+                fontSize: 13,
+                letterSpacing: 1,
+                color: '#ef4444',
+              }}
+              onPress={() => logout()}
+              style={{
+                marginTop: 'auto',
+                marginBottom: 20,
+                borderTopWidth: 1,
+                borderTopColor: isDarkMode ? '#333' : '#e5e7eb',
+                paddingTop: 10,
+              }}
+            />
+          </DrawerContentScrollView>
+        );
+      }}
       screenOptions={{
-        headerStyle: { backgroundColor: '#131313', shadowColor: 'transparent', elevation: 0 },
-        headerTintColor: '#ffffff',
-        headerTitleStyle: { fontWeight: '700', fontSize: 16, letterSpacing: 1 },
-        drawerStyle: { backgroundColor: '#131313', width: 280 },
-        drawerActiveBackgroundColor: '#adc6ff',
-        drawerActiveTintColor: '#131313',
-        drawerInactiveTintColor: '#c2c6d6',
-        swipeEdgeWidth: 60,
+        headerShown: false,
+        drawerStyle: {
+          backgroundColor: isDarkMode ? '#131313' : '#ffffff',
+          width: 280,
+        },
       }}
     >
-      {NAV_ITEMS.map((item) => (
-        <Drawer.Screen
-          key={item.name}
-          name={item.name}
-          component={item.component}
-          options={{ title: item.label }}
-        />
-      ))}
+      {/* Single hidden screen that renders the full Tab navigator */}
+      <Drawer.Screen
+        name="DeptHeadTabs"
+        component={DeptHeadTabNavigator}
+        options={{ title: 'APP MODULES', drawerItemStyle: { display: 'none' } }}
+      />
     </Drawer.Navigator>
   );
 }
-
-// ── Styles ─────────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
-  drawerContainer: {
-    flex: 1,
-    backgroundColor: '#131313',
-  },
-  drawerHeader: {
-    paddingHorizontal: 20,
-    paddingTop: 56,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
-  },
-  drawerBrand: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#ffffff',
-    letterSpacing: 2,
-  },
-  drawerSubtitle: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#6b7280',
-    letterSpacing: 1.5,
-    marginTop: 2,
-  },
-  scrollContent: {
-    paddingVertical: 8,
-  },
-  navItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    marginHorizontal: 8,
-    borderRadius: 4,
-  },
-  navItemActive: {
-    backgroundColor: '#adc6ff',
-  },
-  navLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    color: '#c2c6d6',
-  },
-  navLabelActive: {
-    color: '#131313',
-  },
-  signOutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    borderTopWidth: 1,
-    borderTopColor: '#2a2a2a',
-  },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#2573e6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  signOutLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    color: '#ef4444',
-    marginLeft: 10,
-  },
-});

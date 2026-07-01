@@ -1,84 +1,168 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, ActivityIndicator, Modal, Alert, RefreshControl,
-} from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Modal, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CreditCard, Search, X, Check, Plus, AlertCircle } from 'lucide-react-native';
-import { getMyExpenses, submitExpense, reviewExpense } from '../../api/services';
+import { CreditCard, Plus, Search, X, Check, AlertCircle } from 'lucide-react-native';
+import { getMyExpenses, submitExpense } from '../../api/services';
+import useThemeStore from '../../store/themeStore';
 
-const STATUS_META = {
-  pending:  { label: 'Pending',  color: '#e8a847', bg: '#e8a84718' },
-  approved: { label: 'Approved', color: '#47ff8a', bg: '#47ff8a18' },
-  rejected: { label: 'Rejected', color: '#ff4747', bg: '#ff474718' },
-  paid:     { label: 'Paid',     color: '#47c8ff', bg: '#47c8ff18' },
-};
+const CATEGORIES = ['travel','food','accommodation','equipment','training','other'];
+const PAYMENT_METHODS = ['cash','card','bank_transfer','upi'];
+const STATUS_META = { pending:{label:'Pending',color:'#e8a847',bg:'bg-[#e8a8471a]',border:'border-[#e8a84740]'}, approved:{label:'Approved',color:'#10b981',bg:'bg-[#10b9811a]',border:'border-[#10b98140]'}, rejected:{label:'Rejected',color:'#ef4444',bg:'bg-[#ef44441a]',border:'border-[#ef444440]'}, paid:{label:'Paid',color:'#47c8ff',bg:'bg-[#47c8ff1a]',border:'border-[#47c8ff40]'} };
+const FILTERS = ['all','pending','approved','rejected','paid'];
 
-const CATEGORIES = ['travel', 'food', 'accommodation', 'equipment', 'training', 'other'];
-const PAYMENT_METHODS = ['cash', 'card', 'bank_transfer', 'upi'];
+export default function ExpensesScreen() {
+  const { isDarkMode } = useThemeStore();
+  const [expenses, setExpenses] = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch]     = useState('');
+  const [statusF, setStatusF]   = useState('all');
+  const [showModal, setShowModal] = useState(false);
 
-function Badge({ status }) {
-  const m = STATUS_META[status?.toLowerCase()] || STATUS_META.pending;
+  const load = useCallback(async () => {
+    try {
+      const data = await getMyExpenses({ limit: 100 });
+      setExpenses(data?.expenses || data?.records || (Array.isArray(data) ? data : []));
+    } catch {} finally { setLoading(false); setRefreshing(false); }
+  }, []);
+
+  React.useEffect(() => { load(); }, [load]);
+  const onRefresh = () => { setRefreshing(true); load(); };
+
+  async function handleSubmit(form) {
+    await submitExpense(form); load();
+  }
+
+  const filtered = expenses.filter(e => (!search||e.title?.toLowerCase().includes(search.toLowerCase())) && (statusF==='all'||e.status?.toLowerCase()===statusF));
+  const total = expenses.reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+  const pendingCount = expenses.filter(e=>e.status==='pending').length;
+
+  const bgScreen = isDarkMode ? 'bg-[#131313]' : 'bg-gray-50';
+  const bgCard   = isDarkMode ? 'bg-[#1c1b1b]' : 'bg-white';
+  const borderColor = isDarkMode ? 'border-[#ffffff1a]' : 'border-gray-200';
+  const textColor = isDarkMode ? 'text-white' : 'text-gray-900';
+  const textMuted = isDarkMode ? 'text-[#888]' : 'text-gray-500';
+
   return (
-    <View style={{ backgroundColor: m.bg, borderWidth: 1, borderColor: m.color + '40', paddingHorizontal: 8, paddingVertical: 3 }}>
-      <Text style={{ fontSize: 10, fontWeight: '700', color: m.color }}>{m.label}</Text>
-    </View>
+    <SafeAreaView className={`flex-1 ${bgScreen}`} edges={['bottom']}>
+      <View className={`flex-row justify-end px-4 py-3 border-b ${borderColor}`}>
+        <TouchableOpacity onPress={()=>setShowModal(true)} className={`flex-row items-center px-4 py-2 rounded-lg ${isDarkMode?'bg-[#adc6ff]':'bg-[#2573e6]'}`}>
+          <Plus size={14} color={isDarkMode?'#131313':'#fff'} />
+          <Text className={`text-xs font-bold ml-1.5 uppercase tracking-widest ${isDarkMode?'text-[#131313]':'text-white'}`}>SUBMIT EXPENSE</Text>
+        </TouchableOpacity>
+      </View>
+      <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDarkMode?'#adc6ff':'#2573e6'} />}>
+        <View className="flex-row gap-2 mb-4">
+          <View className={`flex-1 border rounded-lg p-3 ${bgCard} ${borderColor}`}>
+            <Text className={`text-[8px] font-bold uppercase tracking-widest mb-1 ${textMuted}`}>TOTAL AMOUNT</Text>
+            <Text className="text-xl font-bold text-[#47c8ff]">{loading?'—':`₹${total.toFixed(2)}`}</Text>
+          </View>
+          <View className={`flex-1 border rounded-lg p-3 ${bgCard} ${borderColor}`}>
+            <Text className={`text-[8px] font-bold uppercase tracking-widest mb-1 ${textMuted}`}>PENDING</Text>
+            <Text className="text-xl font-bold text-[#e8a847]">{loading?'—':pendingCount}</Text>
+          </View>
+        </View>
+        <View className={`flex-row items-center border rounded-lg px-3 h-10 mb-3 ${bgCard} ${borderColor}`}>
+          <Search size={14} color={isDarkMode?'#888':'#9ca3af'} />
+          <TextInput value={search} onChangeText={setSearch} placeholder="Search expenses..." placeholderTextColor={isDarkMode?'#888':'#9ca3af'} className={`flex-1 text-xs ml-2 ${textColor}`} />
+          {!!search&&<TouchableOpacity onPress={()=>setSearch('')}><X size={14} color={isDarkMode?'#888':'#9ca3af'} /></TouchableOpacity>}
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+          {FILTERS.map(f=>(
+            <TouchableOpacity key={f} onPress={()=>setStatusF(f)}
+              className={`mr-2 px-4 py-1.5 rounded-full border ${statusF===f?(isDarkMode?'bg-[#adc6ff] border-[#adc6ff]':'bg-[#2573e6] border-[#2573e6]'):`${bgCard} ${borderColor}`}`}>
+              <Text className={`text-[10px] font-bold tracking-widest ${statusF===f?(isDarkMode?'text-[#131313]':'text-white'):textColor}`}>{f==='all'?'All':f.charAt(0).toUpperCase()+f.slice(1)}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        {loading?<ActivityIndicator color={isDarkMode?'#adc6ff':'#2573e6'} className="mt-10"/>:
+         filtered.length===0?(
+           <View className={`items-center py-16 border rounded-lg ${bgCard} ${borderColor}`}>
+             <CreditCard size={32} color={isDarkMode?'#888':'#9ca3af'} />
+             <Text className={`text-xs font-bold uppercase tracking-widest mt-3 ${textMuted}`}>No expenses found</Text>
+           </View>
+         ):filtered.map(e=>{
+           const sm = STATUS_META[e.status?.toLowerCase()]||STATUS_META.pending;
+           return (
+             <View key={e._id} className={`border rounded-lg p-4 mb-3 ${bgCard} ${borderColor}`}>
+               <View className="flex-row justify-between items-start mb-2">
+                 <View className="flex-1 mr-3"><Text className={`text-sm font-bold ${textColor}`}>{e.title}</Text><Text className={`text-[10px] uppercase mt-0.5 ${textMuted}`}>{e.category}</Text></View>
+                 <View className={`px-2 py-1 rounded border ${sm.bg} ${sm.border}`}><Text style={{color:sm.color}} className="text-[9px] font-bold uppercase">{sm.label}</Text></View>
+               </View>
+               <View className="flex-row justify-between items-center">
+                 <Text className="text-base font-bold text-[#47c8ff]">₹{parseFloat(e.amount).toFixed(2)}</Text>
+                 <Text className={`text-xs ${textMuted}`}>{e.expenseDate?new Date(e.expenseDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—'}</Text>
+               </View>
+             </View>
+           );
+         })}
+        <View className="h-8" />
+      </ScrollView>
+      {showModal&&<ExpenseSubmitModal isDarkMode={isDarkMode} onClose={()=>setShowModal(false)} onSave={handleSubmit} />}
+    </SafeAreaView>
   );
 }
 
-function SubmitModal({ onClose, onSave }) {
-  const [form, setForm] = useState({ title: '', category: 'travel', amount: '', expenseDate: new Date().toISOString().slice(0, 10), description: '', paymentMethod: 'cash' });
-  const [saving, setSaving] = useState(false);
+function ExpenseSubmitModal({ isDarkMode, onClose, onSave }) {
+  const [form, setForm] = useState({ title:'', category:'travel', amount:'', expenseDate: new Date().toISOString().slice(0,10), description:'', paymentMethod:'cash' });
   const [err, setErr] = useState('');
+  const [saving, setSaving] = useState(false);
+  const bgCard = isDarkMode ? 'bg-[#1c1b1b]' : 'bg-white';
+  const bgInputAlt = isDarkMode ? 'bg-[#131313]' : 'bg-gray-50';
+  const borderColor = isDarkMode ? 'border-[#ffffff1a]' : 'border-gray-200';
+  const textColor = isDarkMode ? 'text-white' : 'text-gray-900';
+  const textMuted = isDarkMode ? 'text-[#888]' : 'text-gray-500';
 
-  async function handleSubmit() {
-    if (!form.title.trim() || !form.amount) { setErr('Title and amount are required.'); return; }
-    if (isNaN(parseFloat(form.amount))) { setErr('Amount must be a number.'); return; }
-    setErr('');
-    setSaving(true);
+  async function handle() {
+    if (!form.title.trim()||!form.amount){setErr('Title and amount are required.');return;}
+    if(isNaN(parseFloat(form.amount))){setErr('Amount must be a number.');return;}
+    setErr(''); setSaving(true);
     try { await onSave(form); onClose(); }
-    catch (e) { setErr(e?.response?.data?.message || 'Failed to submit expense.'); }
+    catch(e){ setErr(e?.response?.data?.message||'Failed to submit expense.'); }
     finally { setSaving(false); }
   }
 
   return (
     <Modal visible animationType="slide" transparent onRequestClose={onClose}>
-      <View style={exp.overlay}>
-        <View style={exp.sheet}>
-          <View style={exp.sheetHeader}>
-            <Text style={exp.sheetTitle}>SUBMIT EXPENSE</Text>
-            <TouchableOpacity onPress={onClose}><X size={18} color="#6b7280" /></TouchableOpacity>
+      <View className="flex-1 justify-end bg-[#000000cc]">
+        <View className={`border-t rounded-t-2xl max-h-[92%] ${bgCard} ${borderColor}`}>
+          <View className={`flex-row justify-between items-center p-6 pb-4 border-b ${borderColor}`}>
+            <Text className={`text-sm font-bold tracking-widest uppercase ${textColor}`}>SUBMIT EXPENSE</Text>
+            <TouchableOpacity onPress={onClose}><X size={20} color={isDarkMode?'#888':'#6b7280'} /></TouchableOpacity>
           </View>
-          <ScrollView style={{ padding: 16 }} showsVerticalScrollIndicator={false}>
-            {!!err && <View style={exp.errorBox}><AlertCircle size={12} color="#ff4747" /><Text style={exp.errorText}>{err}</Text></View>}
-            <Text style={exp.label}>Title *</Text>
-            <TextInput style={exp.input} value={form.title} onChangeText={v => setForm({ ...form, title: v })} placeholder="e.g. Flight to Delhi" placeholderTextColor="#4b5563" />
-            <Text style={exp.label}>Amount (₹) *</Text>
-            <TextInput style={exp.input} value={form.amount} onChangeText={v => setForm({ ...form, amount: v })} placeholder="0.00" placeholderTextColor="#4b5563" keyboardType="numeric" />
-            <Text style={exp.label}>Category</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-              {CATEGORIES.map(c => (
-                <TouchableOpacity key={c} onPress={() => setForm({ ...form, category: c })} style={[exp.chip, form.category === c && exp.chipActive]}>
-                  <Text style={[exp.chipText, form.category === c && exp.chipTextActive]}>{c.toUpperCase()}</Text>
+          <ScrollView className="px-6" showsVerticalScrollIndicator={false}>
+            <View className="h-4" />
+            {!!err&&<View className="flex-row items-center bg-[#ef44441a] border border-[#ef44444d] rounded-lg p-3 mb-4"><AlertCircle size={14} color="#ef4444"/><Text className="text-[#ef4444] text-xs ml-2">{err}</Text></View>}
+            <Text className={`text-[10px] font-bold mb-2 uppercase tracking-widest ${textMuted}`}>Title *</Text>
+            <View className={`border rounded-lg p-3 mb-4 ${bgInputAlt} ${borderColor}`}><TextInput value={form.title} onChangeText={v=>setForm({...form,title:v})} placeholder="e.g. Flight to Delhi" placeholderTextColor={isDarkMode?'#888':'#9ca3af'} className={`text-xs ${textColor}`}/></View>
+            <Text className={`text-[10px] font-bold mb-2 uppercase tracking-widest ${textMuted}`}>Amount (₹) *</Text>
+            <View className={`border rounded-lg p-3 mb-4 ${bgInputAlt} ${borderColor}`}><TextInput value={form.amount} onChangeText={v=>setForm({...form,amount:v})} placeholder="0.00" placeholderTextColor={isDarkMode?'#888':'#9ca3af'} keyboardType="numeric" className={`text-xs ${textColor}`}/></View>
+            <Text className={`text-[10px] font-bold mb-2 uppercase tracking-widest ${textMuted}`}>Category</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+              {CATEGORIES.map(c=>(
+                <TouchableOpacity key={c} onPress={()=>setForm({...form,category:c})}
+                  className={`mr-2 px-4 py-1.5 rounded-full border ${form.category===c?(isDarkMode?'bg-[#adc6ff] border-[#adc6ff]':'bg-[#2573e6] border-[#2573e6]'):`${bgInputAlt} ${borderColor}`}`}>
+                  <Text className={`text-[10px] font-bold uppercase ${form.category===c?(isDarkMode?'text-[#131313]':'text-white'):textColor}`}>{c}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
-            <Text style={exp.label}>Payment Method</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-              {PAYMENT_METHODS.map(m => (
-                <TouchableOpacity key={m} onPress={() => setForm({ ...form, paymentMethod: m })} style={[exp.chip, form.paymentMethod === m && exp.chipActive]}>
-                  <Text style={[exp.chipText, form.paymentMethod === m && exp.chipTextActive]}>{m.replace('_', ' ').toUpperCase()}</Text>
+            <Text className={`text-[10px] font-bold mb-2 uppercase tracking-widest ${textMuted}`}>Payment Method</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+              {PAYMENT_METHODS.map(m=>(
+                <TouchableOpacity key={m} onPress={()=>setForm({...form,paymentMethod:m})}
+                  className={`mr-2 px-4 py-1.5 rounded-full border ${form.paymentMethod===m?(isDarkMode?'bg-[#adc6ff] border-[#adc6ff]':'bg-[#2573e6] border-[#2573e6]'):`${bgInputAlt} ${borderColor}`}`}>
+                  <Text className={`text-[10px] font-bold uppercase ${form.paymentMethod===m?(isDarkMode?'text-[#131313]':'text-white'):textColor}`}>{m.replace('_',' ')}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
-            <Text style={exp.label}>Description</Text>
-            <TextInput style={[exp.input, { minHeight: 60, textAlignVertical: 'top' }]} value={form.description} onChangeText={v => setForm({ ...form, description: v })} placeholder="Additional details..." placeholderTextColor="#4b5563" multiline />
-            <View style={{ height: 16 }} />
+            <Text className={`text-[10px] font-bold mb-2 uppercase tracking-widest ${textMuted}`}>Description</Text>
+            <View className={`border rounded-lg p-3 mb-6 ${bgInputAlt} ${borderColor}`}><TextInput value={form.description} onChangeText={v=>setForm({...form,description:v})} placeholder="Additional details..." placeholderTextColor={isDarkMode?'#888':'#9ca3af'} multiline className={`text-xs min-h-[60px] ${textColor}`} textAlignVertical="top"/></View>
           </ScrollView>
-          <View style={exp.footer}>
-            <TouchableOpacity style={exp.cancelBtn} onPress={onClose}><Text style={exp.cancelText}>CANCEL</Text></TouchableOpacity>
-            <TouchableOpacity style={[exp.saveBtn, saving && { opacity: 0.5 }]} onPress={handleSubmit} disabled={saving}>
-              {saving ? <ActivityIndicator size="small" color="#fff" /> : <><Check size={14} color="#fff" /><Text style={exp.saveText}>SUBMIT</Text></>}
+          <View className={`flex-row justify-end p-6 pt-4 border-t ${borderColor}`}>
+            <TouchableOpacity onPress={onClose} disabled={saving} className="mr-4 py-3 px-4"><Text className={`font-bold text-sm uppercase ${textColor}`}>Cancel</Text></TouchableOpacity>
+            <TouchableOpacity onPress={handle} disabled={saving} className={`px-6 py-3 rounded-lg flex-row items-center ${isDarkMode?'bg-[#adc6ff]':'bg-[#2573e6]'} ${saving?'opacity-50':''}`}>
+              {saving?<ActivityIndicator size="small" color={isDarkMode?'#131313':'#fff'}/>:<><Check size={14} color={isDarkMode?'#131313':'#fff'}/><Text className={`font-bold text-sm ml-1.5 uppercase tracking-wider ${isDarkMode?'text-[#131313]':'text-white'}`}>SUBMIT</Text></>}
             </TouchableOpacity>
           </View>
         </View>
@@ -86,142 +170,3 @@ function SubmitModal({ onClose, onSave }) {
     </Modal>
   );
 }
-
-export default function ExpensesScreen() {
-  const [expenses, setExpenses]   = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [search, setSearch]       = useState('');
-  const [statusF, setStatusF]     = useState('all');
-  const [showModal, setShowModal] = useState(false);
-
-  const load = useCallback(async () => {
-    try {
-      const data = await getMyExpenses({ limit: 100 });
-      const arr = data?.expenses || data?.records || (Array.isArray(data) ? data : []);
-      setExpenses(arr);
-    } catch {} finally { setLoading(false); setRefreshing(false); }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-  const onRefresh = () => { setRefreshing(true); load(); };
-
-  async function handleSubmit(form) {
-    await submitExpense(form);
-    load();
-  }
-
-  const FILTERS = ['all', 'pending', 'approved', 'rejected', 'paid'];
-
-  const filtered = expenses.filter(e => {
-    const matchS = !search || e.title?.toLowerCase().includes(search.toLowerCase());
-    const matchF = statusF === 'all' || e.status?.toLowerCase() === statusF;
-    return matchS && matchF;
-  });
-
-  const total   = expenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
-  const pending = expenses.filter(e => e.status === 'pending').length;
-
-  return (
-    <SafeAreaView style={exp.safe} edges={['bottom']}>
-      <View style={exp.header}>
-        <View>
-          <Text style={exp.headerSub}>DEPARTMENT</Text>
-          <Text style={exp.headerTitle}>Expenses</Text>
-        </View>
-        <TouchableOpacity style={exp.addBtn} onPress={() => setShowModal(true)}>
-          <Plus size={14} color="#0f172a" strokeWidth={2.5} />
-          <Text style={exp.addBtnText}>SUBMIT EXPENSE</Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2573e6" />}>
-
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
-          <View style={exp.statCard}>
-            <Text style={exp.statLabel}>TOTAL AMOUNT</Text>
-            <Text style={[exp.statValue, { color: '#47c8ff' }]}>₹{loading ? '—' : total.toFixed(2)}</Text>
-          </View>
-          <View style={exp.statCard}>
-            <Text style={exp.statLabel}>PENDING</Text>
-            <Text style={[exp.statValue, { color: '#e8a847' }]}>{loading ? '—' : pending}</Text>
-          </View>
-        </View>
-
-        <View style={exp.searchBox}>
-          <Search size={14} color="#6b7280" />
-          <TextInput style={exp.searchInput} value={search} onChangeText={setSearch} placeholder="Search expenses..." placeholderTextColor="#4b5563" />
-          {!!search && <TouchableOpacity onPress={() => setSearch('')}><X size={14} color="#6b7280" /></TouchableOpacity>}
-        </View>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-          {FILTERS.map(f => (
-            <TouchableOpacity key={f} onPress={() => setStatusF(f)} style={[exp.chip, statusF === f && exp.chipActive]}>
-              <Text style={[exp.chipText, statusF === f && exp.chipTextActive]}>{f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {loading ? <ActivityIndicator color="#2573e6" style={{ marginTop: 40 }} /> :
-         filtered.length === 0 ? <View style={exp.empty}><CreditCard size={32} color="#374151" /><Text style={exp.emptyText}>No expenses found</Text></View> :
-         filtered.map(e => (
-           <View key={e._id} style={exp.card}>
-             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-               <View style={{ flex: 1 }}>
-                 <Text style={exp.cardTitle}>{e.title}</Text>
-                 <Text style={exp.cardCat}>{e.category?.toUpperCase()}</Text>
-               </View>
-               <Badge status={e.status} />
-             </View>
-             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-               <Text style={exp.amountText}>₹{parseFloat(e.amount).toFixed(2)}</Text>
-               <Text style={exp.dateText}>{e.expenseDate ? new Date(e.expenseDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</Text>
-             </View>
-           </View>
-         ))}
-        <View style={{ height: 32 }} />
-      </ScrollView>
-
-      {showModal && <SubmitModal onClose={() => setShowModal(false)} onSave={handleSubmit} />}
-    </SafeAreaView>
-  );
-}
-
-const exp = StyleSheet.create({
-  safe:         { flex: 1, backgroundColor: '#0d0d0d' },
-  header:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', padding: 16, borderBottomWidth: 1, borderBottomColor: '#1f2937', backgroundColor: '#131313' },
-  headerSub:    { fontSize: 10, color: '#6b7280', letterSpacing: 1.5, fontWeight: '600' },
-  headerTitle:  { fontSize: 22, fontWeight: '800', color: '#ffffff' },
-  addBtn:       { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: '#2573e6', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#adc6ff' },
-  addBtnText:   { fontSize: 11, fontWeight: '800', color: '#0f172a', letterSpacing: 0.8 },
-  statCard:     { flex: 1, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#1f2937', padding: 12 },
-  statLabel:    { fontSize: 8, color: '#6b7280', letterSpacing: 1, fontWeight: '700', marginBottom: 4 },
-  statValue:    { fontSize: 20, fontWeight: '800', color: '#ffffff' },
-  searchBox:    { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#1f2937', paddingHorizontal: 10, paddingVertical: 8, marginBottom: 10 },
-  searchInput:  { flex: 1, fontSize: 12, color: '#e5e7eb' },
-  chip:         { borderWidth: 1, borderColor: '#1f2937', paddingHorizontal: 12, paddingVertical: 6, marginRight: 8 },
-  chipActive:   { borderColor: '#2573e6', backgroundColor: '#2573e620' },
-  chipText:     { fontSize: 10, color: '#9ca3af', fontWeight: '700', letterSpacing: 0.6 },
-  chipTextActive:{ color: '#2573e6' },
-  card:         { backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#1f2937', padding: 14, marginBottom: 8 },
-  cardTitle:    { fontSize: 13, fontWeight: '700', color: '#ffffff' },
-  cardCat:      { fontSize: 10, color: '#6b7280', marginTop: 2 },
-  amountText:   { fontSize: 15, fontWeight: '800', color: '#47c8ff' },
-  dateText:     { fontSize: 11, color: '#6b7280' },
-  empty:        { alignItems: 'center', paddingVertical: 60, gap: 12 },
-  emptyText:    { fontSize: 13, color: '#4b5563' },
-  overlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
-  sheet:        { backgroundColor: '#1a1a1a', borderTopWidth: 1, borderTopColor: '#1f2937', maxHeight: '90%' },
-  sheetHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#1f2937' },
-  sheetTitle:   { fontSize: 11, fontWeight: '800', color: '#ffffff', letterSpacing: 1.5 },
-  footer:       { flexDirection: 'row', gap: 8, padding: 16, borderTopWidth: 1, borderTopColor: '#1f2937' },
-  label:        { fontSize: 10, color: '#6b7280', fontWeight: '700', letterSpacing: 1.2, marginBottom: 6, marginTop: 10 },
-  input:        { backgroundColor: '#131313', borderWidth: 1, borderColor: '#1f2937', color: '#e5e7eb', paddingHorizontal: 12, paddingVertical: 10, fontSize: 13 },
-  errorBox:     { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ff474718', borderWidth: 1, borderColor: '#ff4747', padding: 10, marginBottom: 8 },
-  errorText:    { fontSize: 11, color: '#ff4747', flex: 1 },
-  cancelBtn:    { flex: 1, paddingVertical: 12, borderWidth: 1, borderColor: '#1f2937', alignItems: 'center', justifyContent: 'center' },
-  cancelText:   { fontSize: 11, color: '#9ca3af', fontWeight: '700', letterSpacing: 1 },
-  saveBtn:      { flex: 1, paddingVertical: 12, backgroundColor: '#2573e6', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  saveText:     { fontSize: 11, color: '#ffffff', fontWeight: '700', letterSpacing: 1 },
-});

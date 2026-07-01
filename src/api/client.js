@@ -16,15 +16,16 @@ function resolveBaseUrl() {
     return process.env.EXPO_PUBLIC_API_URL;
   }
   if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:5000/api/v1';
+    return 'http://192.168.1.185:5000/api/v1'; // Hardcoded for physical device testing
   }
-  return 'http://localhost:5000/api/v1';
+  return 'http://192.168.1.185:5000/api/v1'; // Hardcoded for physical device testing
 }
 
 const BASE_URL = resolveBaseUrl();
 
 const client = axios.create({
   baseURL: BASE_URL,
+  timeout: 10000, // 10 second timeout — fail fast instead of hanging
   headers: {
     'Content-Type': 'application/json',
   },

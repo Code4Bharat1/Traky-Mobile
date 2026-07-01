@@ -1,35 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, RefreshControl, Alert,
-} from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Bell, Check, Trash2, CheckCheck } from 'lucide-react-native';
 import { getNotifications, markAsRead, markAllAsRead, deleteNotification } from '../../api/services';
+import useThemeStore from '../../store/themeStore';
 
-function fmt(d) {
-  if (!d) return '';
-  const now = new Date();
-  const date = new Date(d);
-  const diff = (now - date) / 1000;
-  if (diff < 60) return 'Just now';
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-const TYPE_COLOR = {
-  task:        '#47c8ff',
-  project:     '#2573e6',
-  leave:       '#e8a847',
-  attendance:  '#47ff8a',
-  expense:     '#f87343',
-  bug:         '#ff4747',
-  daily_log:   '#9c47ff',
-  system:      '#9ca3af',
-};
+const fmt = d => { if (!d) return ''; const now=new Date(), date=new Date(d), diff=(now-date)/1000; if(diff<60)return'Just now'; if(diff<3600)return`${Math.floor(diff/60)}m ago`; if(diff<86400)return`${Math.floor(diff/3600)}h ago`; return date.toLocaleDateString('en-US',{month:'short',day:'numeric'}); };
+const TYPE_COLOR = { task:'#47c8ff', project:'#2573e6', leave:'#e8a847', attendance:'#10b981', expense:'#f87343', bug:'#ef4444', daily_log:'#9c47ff', system:'#9ca3af' };
 
 export default function NotificationsScreen() {
+  const { isDarkMode } = useThemeStore();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount]     = useState(0);
   const [loading, setLoading]             = useState(true);
@@ -44,136 +24,85 @@ export default function NotificationsScreen() {
     } catch {} finally { setLoading(false); setRefreshing(false); }
   }, [filter]);
 
-  useEffect(() => { load(); }, [load]);
-  const onRefresh = () => { setRefreshing(true); load(); };
+  React.useEffect(()=>{load();},[load]);
+  const onRefresh = ()=>{setRefreshing(true);load();};
 
   async function handleMarkRead(id) {
-    try {
-      await markAsRead(id);
-      setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch {}
+    try { await markAsRead(id); setNotifications(prev=>prev.map(n=>n._id===id?{...n,isRead:true}:n)); setUnreadCount(prev=>Math.max(0,prev-1)); } catch {}
   }
-
   async function handleMarkAll() {
-    try {
-      await markAllAsRead();
-      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-      setUnreadCount(0);
-    } catch {}
+    try { await markAllAsRead(); setNotifications(prev=>prev.map(n=>({...n,isRead:true}))); setUnreadCount(0); } catch {}
   }
-
   async function handleDelete(id) {
-    try {
-      await deleteNotification(id);
-      setNotifications(prev => prev.filter(n => n._id !== id));
-    } catch {}
+    try { await deleteNotification(id); setNotifications(prev=>prev.filter(n=>n._id!==id)); } catch {}
   }
 
-  const FILTERS = [
-    { key: 'all',    label: 'All' },
-    { key: 'unread', label: 'Unread' },
-  ];
+  const bgScreen = isDarkMode ? 'bg-[#131313]' : 'bg-gray-50';
+  const bgCard   = isDarkMode ? 'bg-[#1c1b1b]' : 'bg-white';
+  const borderColor = isDarkMode ? 'border-[#ffffff1a]' : 'border-gray-200';
+  const textColor = isDarkMode ? 'text-white' : 'text-gray-900';
+  const textMuted = isDarkMode ? 'text-[#888]' : 'text-gray-500';
 
   return (
-    <SafeAreaView style={ns.safe} edges={['bottom']}>
-      <View style={ns.header}>
-        <View>
-          <Text style={ns.headerSub}>DEPARTMENT</Text>
-          <Text style={ns.headerTitle}>Notifications</Text>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          {unreadCount > 0 && (
-            <View style={ns.unreadBadge}>
-              <Text style={ns.unreadCount}>{unreadCount}</Text>
-            </View>
-          )}
-          {unreadCount > 0 && (
-            <TouchableOpacity style={ns.markAllBtn} onPress={handleMarkAll}>
-              <CheckCheck size={12} color="#2573e6" />
-              <Text style={ns.markAllText}>MARK ALL</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+    <SafeAreaView className={`flex-1 ${bgScreen}`} edges={['bottom']}>
+      <View className={`flex-row justify-end items-center px-4 py-3 border-b gap-2 ${borderColor}`}>
+        {unreadCount > 0 && (
+          <View className="bg-[#ef4444] rounded-full px-2 py-0.5"><Text className="text-white text-[10px] font-bold">{unreadCount}</Text></View>
+        )}
+        {unreadCount > 0 && (
+          <TouchableOpacity onPress={handleMarkAll} className="flex-row items-center gap-1.5 border border-[#2573e640] bg-[#2573e618] px-3 py-1.5 rounded-lg">
+            <CheckCheck size={12} color="#2573e6"/><Text className="text-[10px] font-bold text-[#2573e6] uppercase tracking-widest">MARK ALL READ</Text>
+          </TouchableOpacity>
+        )}
       </View>
-
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2573e6" />}>
-
-        {/* Filters */}
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
-          {FILTERS.map(f => (
-            <TouchableOpacity key={f.key} onPress={() => setFilter(f.key)} style={[ns.chip, filter === f.key && ns.chipActive]}>
-              <Text style={[ns.chipText, filter === f.key && ns.chipTextActive]}>{f.label}</Text>
+      <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDarkMode?'#adc6ff':'#2573e6'}/>}>
+        {/* Filter chips */}
+        <View className="flex-row mb-4">
+          {['all','unread'].map(f=>(
+            <TouchableOpacity key={f} onPress={()=>setFilter(f)}
+              className={`mr-2 px-4 py-1.5 rounded-full border ${filter===f?(isDarkMode?'bg-[#adc6ff] border-[#adc6ff]':'bg-[#2573e6] border-[#2573e6]'):`${bgCard} ${borderColor}`}`}>
+              <Text className={`text-[10px] font-bold tracking-widest capitalize ${filter===f?(isDarkMode?'text-[#131313]':'text-white'):textColor}`}>{f==='all'?'All':'Unread'}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {loading ? <ActivityIndicator color="#2573e6" style={{ marginTop: 40 }} /> :
+        {loading ? <ActivityIndicator color={isDarkMode?'#adc6ff':'#2573e6'} className="mt-10"/> :
          notifications.length === 0 ? (
-           <View style={ns.empty}>
-             <Bell size={32} color="#374151" />
-             <Text style={ns.emptyText}>No notifications</Text>
+           <View className="items-center py-20">
+             <Bell size={48} color={isDarkMode?'#333':'#d1d5db'}/>
+             <Text className={`text-sm mt-4 ${textMuted}`}>No notifications</Text>
            </View>
-         ) : (
-           notifications.map(n => {
-             const color = TYPE_COLOR[n.type] || TYPE_COLOR.system;
-             return (
-               <View key={n._id} style={[ns.card, !n.isRead && ns.cardUnread]}>
-                 <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
-                   {/* Type dot */}
-                   <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color, marginTop: 5 }} />
-                   <View style={{ flex: 1 }}>
-                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                       <Text style={[ns.notifTitle, !n.isRead && ns.notifTitleUnread]} numberOfLines={2}>{n.title || n.message}</Text>
-                       <Text style={ns.timeText}>{fmt(n.createdAt)}</Text>
-                     </View>
-                     {n.message && n.title && (
-                       <Text style={ns.notifBody} numberOfLines={3}>{n.message}</Text>
-                     )}
+         ) : notifications.map(n => {
+           const color = TYPE_COLOR[n.type] || TYPE_COLOR.system;
+           const isUnread = !n.isRead;
+           return (
+             <TouchableOpacity key={n._id} activeOpacity={0.8} onPress={()=>isUnread&&handleMarkRead(n._id)}
+               className={`border rounded-lg p-4 mb-3 ${isUnread?(isDarkMode?'bg-[#1c1b1b] border-[#2573e640]':'bg-white border-blue-200'):`${bgCard} ${borderColor}`}`}
+               style={isUnread?{borderLeftWidth:3,borderLeftColor:'#2573e6'}:{}}>
+               <View className="flex-row items-start gap-3">
+                 <View className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{backgroundColor:isUnread?color:'transparent'}}/>
+                 <View className="flex-1">
+                   <View className="flex-row justify-between items-start mb-1">
+                     <Text className={`text-sm font-bold flex-1 mr-2 ${isUnread?textColor:textMuted}`} numberOfLines={2}>{n.title||'System Notification'}</Text>
+                     <Text className={`text-[10px] flex-shrink-0 ${textMuted}`}>{fmt(n.createdAt)}</Text>
+                   </View>
+                   <Text className={`text-xs leading-5 mb-2 ${textMuted}`} numberOfLines={3}>{n.message||n.body||'No details.'}</Text>
+                   <View className="flex-row justify-end gap-4">
+                     {isUnread&&<TouchableOpacity onPress={()=>handleMarkRead(n._id)} className="flex-row items-center gap-1">
+                       <Check size={11} color={isDarkMode?'#adc6ff':'#2573e6'}/><Text className={`text-[10px] font-bold ${isDarkMode?'text-[#adc6ff]':'text-[#2573e6]'}`}>MARK READ</Text>
+                     </TouchableOpacity>}
+                     <TouchableOpacity onPress={()=>handleDelete(n._id)} className="flex-row items-center gap-1">
+                       <Trash2 size={11} color="#ef4444"/><Text className="text-[10px] font-bold text-[#ef4444]">DELETE</Text>
+                     </TouchableOpacity>
                    </View>
                  </View>
-                 <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 10 }}>
-                   {!n.isRead && (
-                     <TouchableOpacity onPress={() => handleMarkRead(n._id)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                       <Check size={11} color="#2573e6" />
-                       <Text style={{ fontSize: 10, color: '#2573e6', fontWeight: '700' }}>MARK READ</Text>
-                     </TouchableOpacity>
-                   )}
-                   <TouchableOpacity onPress={() => handleDelete(n._id)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                     <Trash2 size={11} color="#ff4747" />
-                     <Text style={{ fontSize: 10, color: '#ff4747', fontWeight: '700' }}>DELETE</Text>
-                   </TouchableOpacity>
-                 </View>
                </View>
-             );
-           })
-         )}
-        <View style={{ height: 32 }} />
+             </TouchableOpacity>
+           );
+         })}
+        <View className="h-8"/>
       </ScrollView>
     </SafeAreaView>
   );
 }
-
-const ns = StyleSheet.create({
-  safe:            { flex: 1, backgroundColor: '#0d0d0d' },
-  header:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#1f2937', backgroundColor: '#131313' },
-  headerSub:       { fontSize: 10, color: '#6b7280', letterSpacing: 1.5, fontWeight: '600' },
-  headerTitle:     { fontSize: 22, fontWeight: '800', color: '#ffffff' },
-  unreadBadge:     { backgroundColor: '#ff4747', borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
-  unreadCount:     { fontSize: 11, fontWeight: '800', color: '#ffffff' },
-  markAllBtn:      { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: '#2573e640', paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#2573e618' },
-  markAllText:     { fontSize: 10, color: '#2573e6', fontWeight: '700', letterSpacing: 0.5 },
-  chip:            { borderWidth: 1, borderColor: '#1f2937', paddingHorizontal: 14, paddingVertical: 7, marginRight: 8 },
-  chipActive:      { borderColor: '#2573e6', backgroundColor: '#2573e620' },
-  chipText:        { fontSize: 10, color: '#9ca3af', fontWeight: '700' },
-  chipTextActive:  { color: '#2573e6' },
-  card:            { backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#1f2937', padding: 14, marginBottom: 8 },
-  cardUnread:      { borderLeftWidth: 3, borderLeftColor: '#2573e6' },
-  notifTitle:      { fontSize: 12, fontWeight: '600', color: '#9ca3af', flex: 1, marginRight: 8 },
-  notifTitleUnread:{ color: '#ffffff', fontWeight: '700' },
-  notifBody:       { fontSize: 11, color: '#6b7280', lineHeight: 16 },
-  timeText:        { fontSize: 10, color: '#4b5563', fontWeight: '500', whiteSpace: 'nowrap', flexShrink: 0 },
-  empty:           { alignItems: 'center', paddingVertical: 60, gap: 12 },
-  emptyText:       { fontSize: 13, color: '#4b5563' },
-});
