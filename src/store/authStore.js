@@ -8,6 +8,8 @@ const useAuthStore = create((set, get) => ({
   token: null,
   isLoading: true,
   error: null,
+  requirePasswordChange: false,
+  tempToken: null,
 
   // Initialize store from AsyncStorage on app start
   initAuth: async () => {
@@ -21,12 +23,33 @@ const useAuthStore = create((set, get) => ({
 
       set({ token });
 
-      // Verify token and fetch user details
-      const response = await client.get('/auth/me');
-      const user = response.data.user || response.data.data?.user;
+      // Verify token, fetch user details and role permissions
+      const [meResponse, rolesResponse] = await Promise.all([
+        client.get('/auth/me'),
+        client.get('/companies/permissions/roles').catch(() => ({ data: { rolePermissions: {} } }))
+      ]);
+      
+      const user = meResponse.data.user || meResponse.data.data?.user;
+      
+      // Extract main role
+      let role = user?.role?.name || user?.role || user?.globalRole || 'employee';
+      role = role.toLowerCase();
+      let roleKey = 'employee';
+      if (['department_head', 'lead'].includes(role)) roleKey = role;
 
-      // Extract main role (backend usually returns role inside user or from check-permissions)
-      const role = user?.role?.name || user?.role || 'employee';
+      const rolePerms = rolesResponse.data?.rolePermissions?.[roleKey] || {};
+      const customPerms = user?.customPermissions || {};
+      
+      // Merge permissions
+      const mergedPermissions = {};
+      const allResources = new Set([...Object.keys(rolePerms), ...Object.keys(customPerms)]);
+      allResources.forEach(resource => {
+        mergedPermissions[resource] = {
+          ...(rolePerms[resource] || { create: false, read: false, update: false, delete: false }),
+          ...(customPerms[resource] || {})
+        };
+      });
+      user.permissions = mergedPermissions;
 
       set({ user, role, isLoading: false, error: null });
     } catch (error) {
@@ -40,7 +63,16 @@ const useAuthStore = create((set, get) => ({
   login: async (email, password) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await client.post('/auth/login', { email, password });
+      const response = await client.post('/auth/login', { email: email.trim(), password: password.trim() });
+
+      if (response.data.requirePasswordChange) {
+        set({ 
+          isLoading: false, 
+          requirePasswordChange: true, 
+          tempToken: response.data.tempToken 
+        });
+        return;
+      }
 
       const accessToken = response.data.accessToken || response.data.token;
       if (!accessToken) throw new Error("No access token returned from server");
@@ -59,6 +91,27 @@ const useAuthStore = create((set, get) => ({
       const msg = error.response?.data?.error || error.response?.data?.message || 'Login failed';
       set({ isLoading: false, error: msg });
     }
+  },
+
+  changePassword: async (newPassword) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { tempToken } = get();
+      const response = await client.post('/auth/change-password', 
+        { newPassword }, 
+        { headers: { Authorization: `Bearer ${tempToken}` } }
+      );
+      set({ requirePasswordChange: false, tempToken: null, isLoading: false, error: null });
+      return response.data;
+    } catch (error) {
+      const msg = error.response?.data?.error || error.response?.data?.message || 'Failed to change password';
+      set({ isLoading: false, error: msg });
+      throw new Error(msg);
+    }
+  },
+
+  cancelPasswordChange: () => {
+    set({ requirePasswordChange: false, tempToken: null, error: null });
   },
 
   // Perform logout

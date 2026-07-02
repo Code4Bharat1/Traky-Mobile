@@ -127,6 +127,21 @@ function TaskModal({ mode, initial, projects, users, onClose, onSave, saving }) 
               ))}
             </ScrollView>
 
+            
+            <Text style={ts.label}>Advanced Options</Text>
+            <View style={{ borderWidth: 1, borderColor: '#374151', borderRadius: 8, padding: 12, marginBottom: 12 }}>
+               <Text style={ts.label}>Task Points</Text>
+               <TextInput style={ts.input} value={String(form.points || '0')} onChangeText={v => setForm({...form, points: v})} keyboardType="numeric" placeholderTextColor="#4b5563" />
+               
+               <Text style={ts.label}>Parent Task ID (Optional)</Text>
+               <TextInput style={ts.input} value={form.parentTaskId || ''} onChangeText={v => setForm({...form, parentTaskId: v})} placeholder="Task ID..." placeholderTextColor="#4b5563" />
+               
+               <View style={[ts.row, { justifyContent: 'space-between', marginBottom: 12 }]}>
+                 <Text style={ts.label}>Recurring Task</Text>
+                 <Switch value={form.isRecurring || false} onValueChange={v => setForm({...form, isRecurring: v})} />
+               </View>
+            </View>
+     
             <Text style={ts.label}>Assign Employees *</Text>
             {users.slice(0, 20).map(u => {
               const selected = form.contributors.includes(u._id);

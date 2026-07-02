@@ -218,6 +218,7 @@ export default function UserManagement() {
       if (editingUser) {
         await client.patch(`/users/${editingUser._id}`, payload);
       } else {
+        if (!payload.password) payload.password = Math.random().toString(36).slice(-8) + 'A1!';
         await client.post('/users', payload);
       }
       setModalVisible(false);

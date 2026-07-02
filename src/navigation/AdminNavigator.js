@@ -42,110 +42,117 @@ const MENU_ITEMS = [
   { label: 'NOTIFICATIONS', icon: Bell, route: 'AdminTabs', screen: 'Notifications' },
 ];
 
-export default function AdminNavigator() {
+function AdminDrawerContent(props) {
   const { user, logout } = useAuthStore();
+  const { isDarkMode } = useThemeStore();
+
+  // Determine active route
+  const activeRoute = props.state.routes[props.state.index];
+  let activeDrawerName = activeRoute.name;
+  let activeTabName = null;
+
+  if (activeDrawerName === 'AdminTabs') {
+    if (activeRoute.state && activeRoute.state.routes) {
+      const currentTab = activeRoute.state.routes[activeRoute.state.index || 0];
+      if (currentTab.name === 'DashboardTab' && currentTab.state) {
+          // We are inside the MainStack of DashboardTab
+          activeTabName = currentTab.state.routes[currentTab.state.index || 0].name;
+      } else {
+          activeTabName = currentTab.name;
+      }
+    } else {
+      activeTabName = 'AdminDashboardMain';
+    }
+  }
+
+  return (
+    <DrawerContentScrollView {...props} contentContainerStyle={{ flexGrow: 1, paddingTop: 0 }}>
+      {/* Header */}
+      <View style={{
+        paddingHorizontal: 20,
+        paddingTop: 56,
+        paddingBottom: 24,
+        borderBottomWidth: 1,
+        borderBottomColor: isDarkMode ? '#2a2a2a' : '#e5e7eb',
+        marginBottom: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12
+      }}>
+        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#2573e6', alignItems: 'center', justifyContent: 'center' }}>
+          <Shield color="#ffffff" size={16} />
+        </View>
+        <View>
+          <Text style={{ fontSize: 18, fontWeight: '900', color: isDarkMode ? '#ffffff' : '#111827', letterSpacing: 2 }}>TRAKY</Text>
+          <Text style={{ fontSize: 10, fontWeight: '600', color: '#6b7280', letterSpacing: 1.5, marginTop: 2 }}>ADMIN PORTAL</Text>
+        </View>
+      </View>
+
+      {/* Menu Items in Sequence */}
+      {MENU_ITEMS.filter(item => {
+        if (item.feature && user?.enabledFeatures && user.enabledFeatures[item.feature] === false) {
+          return false;
+        }
+        return true;
+      }).map((item, index) => {
+        let isFocused = false;
+        if (item.route === 'AdminTabs') {
+          isFocused = activeDrawerName === 'AdminTabs' && activeTabName === item.screen;
+        } else {
+          isFocused = activeDrawerName === item.route;
+        }
+
+        const Icon = item.icon;
+        return (
+          <DrawerItem
+            key={index}
+            label={item.label}
+            icon={({ color, size }) => <Icon color={color} size={size} />}
+            labelStyle={{ fontWeight: 'bold', fontSize: 13, letterSpacing: 1 }}
+            focused={isFocused}
+            activeTintColor={isDarkMode ? '#131313' : '#2573e6'}
+            activeBackgroundColor={isDarkMode ? '#adc6ff' : '#ebf3fc'}
+            inactiveTintColor={isDarkMode ? '#c2c6d6' : '#6b7280'}
+            onPress={() => {
+              props.navigation.closeDrawer();
+              setTimeout(() => {
+                if (item.screen) {
+                const directTabs = ['Tasks', 'DailyLogs', 'Leaderboard', 'Settings'];
+                if (directTabs.includes(item.screen)) {
+                  props.navigation.navigate(item.route, { screen: item.screen });
+                } else {
+                  props.navigation.navigate(item.route, { 
+                    screen: 'DashboardTab',
+                    params: { screen: item.screen }
+                  });
+                }
+              } else {
+                  props.navigation.navigate(item.route);
+                }
+              }, 100);
+            }}
+          />
+        );
+      })}
+
+      {/* Sign Out at the bottom */}
+      <DrawerItem 
+        label="SIGN OUT" 
+        icon={({ size }) => <LogOut color="#ef4444" size={size} />}
+        labelStyle={{ fontWeight: 'bold', fontSize: 13, letterSpacing: 1, color: '#ef4444' }}
+        onPress={() => logout()}
+        style={{ marginTop: 'auto', marginBottom: 20, borderTopWidth: 1, borderTopColor: isDarkMode ? '#333' : '#e5e7eb', paddingTop: 10 }}
+      />
+    </DrawerContentScrollView>
+  );
+}
+
+export default function AdminNavigator() {
   const { isDarkMode } = useThemeStore();
 
   return (
     <Drawer.Navigator
-      drawerContent={(props) => {
-        // Determine active route
-        const activeRoute = props.state.routes[props.state.index];
-        let activeDrawerName = activeRoute.name;
-        let activeTabName = null;
-
-        if (activeDrawerName === 'AdminTabs') {
-          if (activeRoute.state && activeRoute.state.routes) {
-            const currentTab = activeRoute.state.routes[activeRoute.state.index || 0];
-            if (currentTab.name === 'DashboardTab' && currentTab.state) {
-               // We are inside the MainStack of DashboardTab
-               activeTabName = currentTab.state.routes[currentTab.state.index || 0].name;
-            } else {
-               activeTabName = currentTab.name;
-            }
-          } else {
-            activeTabName = 'AdminDashboardMain';
-          }
-        }
-
-        return (
-          <DrawerContentScrollView {...props} contentContainerStyle={{ flexGrow: 1, paddingTop: 0 }}>
-            {/* Header */}
-            <View style={{
-              paddingHorizontal: 20,
-              paddingTop: 56,
-              paddingBottom: 24,
-              borderBottomWidth: 1,
-              borderBottomColor: isDarkMode ? '#2a2a2a' : '#e5e7eb',
-              marginBottom: 8,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 12
-            }}>
-              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#2573e6', alignItems: 'center', justifyContent: 'center' }}>
-                <Shield color="#ffffff" size={16} />
-              </View>
-              <View>
-                <Text style={{ fontSize: 18, fontWeight: '900', color: isDarkMode ? '#ffffff' : '#111827', letterSpacing: 2 }}>TRAKY</Text>
-                <Text style={{ fontSize: 10, fontWeight: '600', color: '#6b7280', letterSpacing: 1.5, marginTop: 2 }}>ADMIN PORTAL</Text>
-              </View>
-            </View>
-
-            {/* Menu Items in Sequence */}
-            {MENU_ITEMS.filter(item => {
-              if (item.feature && user?.enabledFeatures && user.enabledFeatures[item.feature] === false) {
-                return false;
-              }
-              return true;
-            }).map((item, index) => {
-              let isFocused = false;
-              if (item.route === 'AdminTabs') {
-                isFocused = activeDrawerName === 'AdminTabs' && activeTabName === item.screen;
-              } else {
-                isFocused = activeDrawerName === item.route;
-              }
-
-              const Icon = item.icon;
-              return (
-                <DrawerItem
-                  key={index}
-                  label={item.label}
-                  icon={({ color, size }) => <Icon color={color} size={size} />}
-                  labelStyle={{ fontWeight: 'bold', fontSize: 13, letterSpacing: 1 }}
-                  focused={isFocused}
-                  activeTintColor={isDarkMode ? '#131313' : '#2573e6'}
-                  activeBackgroundColor={isDarkMode ? '#adc6ff' : '#ebf3fc'}
-                  inactiveTintColor={isDarkMode ? '#c2c6d6' : '#6b7280'}
-                  onPress={() => {
-                    if (item.screen) {
-                      const directTabs = ['Tasks', 'DailyLogs', 'Leaderboard', 'Settings'];
-                      if (directTabs.includes(item.screen)) {
-                        props.navigation.navigate(item.route, { screen: item.screen });
-                      } else {
-                        props.navigation.navigate(item.route, { 
-                          screen: 'DashboardTab',
-                          params: { screen: item.screen }
-                        });
-                      }
-                    } else {
-                      props.navigation.navigate(item.route);
-                    }
-                  }}
-                />
-              );
-            })}
-
-            {/* Sign Out at the bottom */}
-            <DrawerItem 
-              label="SIGN OUT" 
-              icon={({ size }) => <LogOut color="#ef4444" size={size} />}
-              labelStyle={{ fontWeight: 'bold', fontSize: 13, letterSpacing: 1, color: '#ef4444' }}
-              onPress={() => logout()}
-              style={{ marginTop: 'auto', marginBottom: 20, borderTopWidth: 1, borderTopColor: isDarkMode ? '#333' : '#e5e7eb', paddingTop: 10 }}
-            />
-          </DrawerContentScrollView>
-        );
-      }}
+      drawerContent={AdminDrawerContent}
       screenOptions={{
         headerShown: false,
         drawerStyle: { backgroundColor: isDarkMode ? '#131313' : '#ffffff', width: 280 },

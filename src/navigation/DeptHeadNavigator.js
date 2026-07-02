@@ -84,7 +84,12 @@ function DeptHeadDrawerContent(props) {
           return (
             <TouchableOpacity
               key={item.name}
-              onPress={() => navigation.navigate(item.name)}
+              onPress={() => {
+                navigation.closeDrawer();
+                setTimeout(() => {
+                  navigation.navigate(item.name);
+                }, 100);
+              }}
               style={[styles.navItem, isActive && styles.navItemActive]}
               activeOpacity={0.7}
             >
@@ -121,7 +126,7 @@ function DeptHeadDrawerContent(props) {
 export default function DeptHeadNavigator() {
   return (
     <Drawer.Navigator
-      drawerContent={(props) => <DeptHeadDrawerContent {...props} />}
+      drawerContent={DeptHeadDrawerContent}
       screenOptions={{
         headerStyle: { backgroundColor: '#131313', shadowColor: 'transparent', elevation: 0 },
         headerTintColor: '#ffffff',

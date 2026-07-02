@@ -135,7 +135,9 @@ export default function EmployeeScreen() {
     try {
       setSaving(true);
       if (modal.type === 'add') {
-        const created = await createUser({ ...form, departmentId: form.departmentId || user?.departmentId });
+        const payload = { ...form, departmentId: form.departmentId || user?.departmentId };
+        if (!payload.password) payload.password = Math.random().toString(36).slice(-8) + 'A1!';
+        const created = await createUser(payload);
         setMembers(prev => [created, ...prev]);
       } else {
         const updated = await updateUser(modal.member._id, form);

@@ -85,7 +85,12 @@ function LeadDrawerContent(props) {
           return (
             <TouchableOpacity
               key={item.name}
-              onPress={() => navigation.navigate(item.name)}
+              onPress={() => {
+                navigation.closeDrawer();
+                setTimeout(() => {
+                  navigation.navigate(item.name);
+                }, 100);
+              }}
               style={[styles.navItem, isActive && styles.navItemActive]}
               activeOpacity={0.7}>
               <item.Icon
@@ -120,7 +125,7 @@ function LeadDrawerContent(props) {
 export default function LeadNavigator() {
   return (
     <Drawer.Navigator
-      drawerContent={(props) => <LeadDrawerContent {...props} />}
+      drawerContent={LeadDrawerContent}
       screenOptions={{
         headerStyle: { backgroundColor: '#ffffff' },
         headerTintColor: '#0f172a',
