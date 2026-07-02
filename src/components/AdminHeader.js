@@ -1,12 +1,30 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, TouchableWithoutFeedback, ScrollView } from 'react-native';
 import { Menu, Building, Sun, Moon, Bell, ChevronDown, User, Settings as SettingsIcon, LogOut, Check, X, Trash2, ListFilter, Mail } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
 import useAuthStore from '../store/authStore';
 import useThemeStore from '../store/themeStore';
 
 export default function AdminHeader({ navigation, title }) {
   const { user, logout } = useAuthStore();
   const { isDarkMode, toggleTheme } = useThemeStore();
+  // Fallback: if the passed navigation doesn't have toggleDrawer (e.g. stack nav),
+  // walk up to find the drawer navigator via useNavigation.
+  const rootNav = useNavigation();
+  const openDrawer = () => {
+    try {
+      if (typeof navigation?.toggleDrawer === 'function') {
+        navigation.toggleDrawer();
+      } else if (typeof rootNav?.toggleDrawer === 'function') {
+        rootNav.toggleDrawer();
+      } else {
+        // Try opening the drawer via the root navigator
+        rootNav.getParent()?.toggleDrawer?.();
+      }
+    } catch (e) {
+      // silently ignore
+    }
+  };
   
   const [activeModal, setActiveModal] = useState(null); // 'branch', 'notification', 'profile', or null
   const [selectedBranch, setSelectedBranch] = useState('All Branches');
@@ -56,7 +74,7 @@ export default function AdminHeader({ navigation, title }) {
       
       {/* Left Section: Menu & Title */}
       <View className="flex-row items-center flex-1">
-        <TouchableOpacity onPress={() => navigation.toggleDrawer()} className="mr-4 p-1">
+        <TouchableOpacity onPress={openDrawer} className="mr-4 p-1">
           <Menu color={isDarkMode ? "#adc6ff" : "#2573e6"} size={24} />
         </TouchableOpacity>
         <Text 
@@ -182,7 +200,10 @@ export default function AdminHeader({ navigation, title }) {
                   )}
                 </ScrollView>
                 <TouchableOpacity 
-                  onPress={() => { setActiveModal(null); navigation.navigate('Notifications'); }}
+                  onPress={() => { 
+                    setActiveModal(null); 
+                    try { navigation.navigate('Notifications'); } catch(e) { rootNav.navigate('Notifications'); }
+                  }}
                   className={`py-3 border-t items-center ${isDarkMode ? 'border-[#333]' : 'border-gray-200'}`}
                 >
                   <Text className={`text-xs font-bold ${isDarkMode ? 'text-[#adc6ff]' : 'text-[#2573e6]'}`}>VIEW ALL NOTIFICATIONS</Text>

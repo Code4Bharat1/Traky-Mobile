@@ -21,8 +21,11 @@ import {
 } from 'lucide-react-native';
 import useAuthStore from '../store/authStore';
 
-// ── Screens ────────────────────────────────────────────────────────────────────
 import LeadDashboard from '../screens/Lead/LeadDashboard';
+import EmployeeScreen from '../screens/Lead/EmployeeScreen';
+import ProjectsScreen from '../screens/Lead/ProjectsScreen';
+import TasksScreen from '../screens/Lead/TasksScreen';
+import LeaderboardScreen from '../screens/Lead/LeaderboardScreen';
 
 // Placeholder screen factory for screens not yet built
 function PlaceholderScreen({ route }) {
@@ -36,23 +39,23 @@ function PlaceholderScreen({ route }) {
 
 const Drawer = createDrawerNavigator();
 
-// ── Sidebar menu items ─────────────────────────────────────────────────────────
 const NAV_ITEMS = [
   { name: 'Dashboard',       label: 'DASHBOARD',        Icon: LayoutDashboard, component: LeadDashboard },
   { name: 'Attendance',      label: 'ATTENDANCE',        Icon: Clock,           component: PlaceholderScreen },
   { name: 'MyLeaves',        label: 'MY LEAVES',         Icon: Umbrella,        component: PlaceholderScreen },
+  { name: 'Employees',       label: 'EMPLOYEES',         Icon: Users,           component: EmployeeScreen },
   { name: 'TeamAttendance',  label: 'TEAM ATTENDANCE',   Icon: Users,           component: PlaceholderScreen },
   { name: 'LeaveApprovals',  label: 'LEAVE APPROVALS',   Icon: UserCheck,       component: PlaceholderScreen },
   { name: 'Expenses',        label: 'EXPENSES',          Icon: CheckSquare,     component: PlaceholderScreen },
-  { name: 'Projects',        label: 'PROJECTS',          Icon: FolderOpen,      component: PlaceholderScreen },
-  { name: 'Tasks',           label: 'TASKS',             Icon: ClipboardList,   component: PlaceholderScreen },
+  { name: 'Projects',        label: 'PROJECTS',          Icon: FolderOpen,      component: ProjectsScreen },
+  { name: 'Tasks',           label: 'TASKS',             Icon: ClipboardList,   component: TasksScreen },
   { name: 'Templates',       label: 'TEMPLATES',         Icon: FileStack,       component: PlaceholderScreen },
   { name: 'Reports',         label: 'REPORTS',           Icon: FileText,        component: PlaceholderScreen },
   { name: 'EmployeeReport',  label: 'EMPLOYEE REPORT',   Icon: BarChart2,       component: PlaceholderScreen },
   { name: 'DailyLogs',       label: 'DAILY LOGS',        Icon: BookOpen,        component: PlaceholderScreen },
   { name: 'Issues',          label: 'ISSUES',            Icon: Bug,             component: PlaceholderScreen },
   { name: 'KTDocuments',     label: 'KT DOCUMENTS',      Icon: FileText,        component: PlaceholderScreen },
-  { name: 'Leaderboard',     label: 'LEADERBOARD',       Icon: Trophy,          component: PlaceholderScreen },
+  { name: 'Leaderboard',     label: 'LEADERBOARD',       Icon: Trophy,          component: LeaderboardScreen },
   { name: 'Notifications',   label: 'NOTIFICATIONS',     Icon: Bell,            component: PlaceholderScreen },
 ];
 

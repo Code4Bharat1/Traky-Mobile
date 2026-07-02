@@ -1,234 +1,152 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, ActivityIndicator, Modal, RefreshControl,
-} from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Modal, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BookCheck, Search, X, Users, ChevronRight, Calendar, Layers, BookOpen } from 'lucide-react-native';
+import { BookCheck, Search, X, Calendar, ChevronRight, BookOpen, Layers } from 'lucide-react-native';
 import { getAllLogs, getUsers, getProjects } from '../../api/services';
+import useThemeStore from '../../store/themeStore';
 
-function fmt(d) {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const fmt = d => d ? new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+
+export default function DailyLogsScreen() {
+  const { isDarkMode } = useThemeStore();
+  const [logs, setLogs]         = useState([]);
+  const [users, setUsers]       = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch]     = useState('');
+  const [selected, setSelected] = useState(null);
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  const load = useCallback(async () => {
+    try {
+      const [l, u, p] = await Promise.allSettled([getAllLogs(), getUsers(), getProjects()]);
+      setLogs(l.status==='fulfilled'?l.value:[]);
+      setUsers(u.status==='fulfilled'?u.value:[]);
+      setProjects(p.status==='fulfilled'?p.value:[]);
+    } catch {} finally { setLoading(false); setRefreshing(false); }
+  }, []);
+
+  React.useEffect(()=>{load();},[load]);
+  const onRefresh = ()=>{setRefreshing(true);load();};
+
+  const getEmp = log => users.find(u=>String(u._id)===String(log.userId));
+  const filtered = logs.filter(l=>{const emp=getEmp(l);const name=emp?.name||l.userName||'';return !search||name.toLowerCase().includes(search.toLowerCase());});
+  const submittedToday = logs.filter(l=>(l.logDate||l.date||l.createdAt||'').startsWith(today)).length;
+  const missingToday   = users.filter(u=>['employee','lead','contributor','reviewer'].includes(u.globalRole)&&!logs.some(l=>String(l.userId)===String(u._id)&&(l.logDate||'').startsWith(today))).length;
+
+  const bgScreen = isDarkMode ? 'bg-[#131313]' : 'bg-gray-50';
+  const bgCard   = isDarkMode ? 'bg-[#1c1b1b]' : 'bg-white';
+  const borderColor = isDarkMode ? 'border-[#ffffff1a]' : 'border-gray-200';
+  const textColor = isDarkMode ? 'text-white' : 'text-gray-900';
+  const textMuted = isDarkMode ? 'text-[#888]' : 'text-gray-500';
+
+  return (
+    <SafeAreaView className={`flex-1 ${bgScreen}`} edges={['bottom']}>
+      <View className={`flex-row justify-between items-center px-4 py-3 border-b ${borderColor}`}>
+        <View className="flex-row gap-3">
+          <View className={`border rounded-lg px-3 py-1.5 items-center ${bgCard} ${borderColor}`}>
+            <Text className={`text-[8px] font-bold uppercase tracking-widest mb-0.5 ${textMuted}`}>SUBMITTED</Text>
+            <Text className="text-sm font-bold text-[#47c8ff]">{loading?'—':submittedToday}</Text>
+          </View>
+          <View className={`border rounded-lg px-3 py-1.5 items-center ${bgCard} ${borderColor}`}>
+            <Text className={`text-[8px] font-bold uppercase tracking-widest mb-0.5 ${textMuted}`}>MISSING</Text>
+            <Text className="text-sm font-bold text-[#ef4444]">{loading?'—':missingToday}</Text>
+          </View>
+        </View>
+      </View>
+      <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDarkMode?'#adc6ff':'#2573e6'}/>}>
+        <View className={`flex-row items-center border rounded-lg px-3 h-10 mb-4 ${bgCard} ${borderColor}`}>
+          <Search size={14} color={isDarkMode?'#888':'#9ca3af'}/>
+          <TextInput value={search} onChangeText={setSearch} placeholder="Search employee or project..." placeholderTextColor={isDarkMode?'#888':'#9ca3af'} className={`flex-1 text-xs ml-2 ${textColor}`}/>
+          {!!search&&<TouchableOpacity onPress={()=>setSearch('')}><X size={14} color={isDarkMode?'#888':'#9ca3af'}/></TouchableOpacity>}
+        </View>
+        {loading?<ActivityIndicator color={isDarkMode?'#adc6ff':'#2573e6'} className="mt-10"/>:
+         filtered.length===0&&<View className={`items-center py-16 border rounded-lg ${bgCard} ${borderColor}`}><BookOpen size={32} color={isDarkMode?'#888':'#9ca3af'}/><Text className={`text-xs font-bold uppercase tracking-widest mt-3 ${textMuted}`}>No logs found</Text></View>}
+        {!loading&&filtered.map(log=>{
+          const emp = getEmp(log);
+          const firstEntry = log.entries?.[0]||{projectId:log.projectId,moduleName:log.moduleName};
+          const proj = projects.find(p=>p._id===(firstEntry.projectId?._id||firstEntry.projectId));
+          return (
+            <TouchableOpacity key={log._id} onPress={()=>setSelected(log)} className={`border rounded-lg p-4 mb-3 ${bgCard} ${borderColor}`}>
+              <View className="flex-row justify-between items-start mb-2">
+                <View className="flex-1">
+                  <Text className={`text-sm font-bold ${textColor}`}>{emp?.name||log.userName||'Unknown'}</Text>
+                  <Text className={`text-[10px] mt-0.5 ${textMuted}`}>{proj?.name||'No project'}</Text>
+                  {firstEntry.moduleName&&<View className="flex-row items-center gap-1 mt-0.5"><Layers size={10} color={isDarkMode?'#888':'#9ca3af'}/><Text className={`text-[10px] ${textMuted}`}>{firstEntry.moduleName}</Text></View>}
+                </View>
+                <View className="flex-row items-center gap-2">
+                  <View className="bg-[#10b9811a] border border-[#10b98140] px-2 py-1 rounded-full"><Text className="text-[9px] font-bold text-[#10b981] uppercase">SUBMITTED</Text></View>
+                  <ChevronRight size={14} color={isDarkMode?'#888':'#9ca3af'}/>
+                </View>
+              </View>
+              <View className="flex-row items-center"><Calendar size={11} color={isDarkMode?'#888':'#9ca3af'}/><Text className={`text-xs ml-1 ${textMuted}`}>{fmt(log.logDate||log.date||log.createdAt)}</Text></View>
+            </TouchableOpacity>
+          );
+        })}
+        {/* Missing logs */}
+        {!loading&&!search&&users.filter(u=>['employee','lead'].includes(u.globalRole)&&!logs.some(l=>String(l.userId)===String(u._id)&&(l.logDate||'').startsWith(today))).map(u=>(
+          <View key={`missing-${u._id}`} className={`border rounded-lg p-4 mb-3 opacity-70 ${bgCard} ${borderColor}`}>
+            <View className="flex-row justify-between items-center">
+              <View><Text className={`text-sm font-bold ${textColor}`}>{u.name}</Text><Text className={`text-[10px] mt-0.5 ${textMuted}`}>No log submitted today</Text></View>
+              <View className="bg-[#ef44441a] border border-[#ef44444d] px-2 py-1 rounded-full"><Text className="text-[9px] font-bold text-[#ef4444] uppercase">MISSING</Text></View>
+            </View>
+          </View>
+        ))}
+        <View className="h-8"/>
+      </ScrollView>
+      {selected&&<LogDetailModal log={selected} users={users} projects={projects} isDarkMode={isDarkMode} onClose={()=>setSelected(null)}/>}
+    </SafeAreaView>
+  );
 }
 
-function LogDetailModal({ log, users, projects, onClose }) {
-  const emp = (users || []).find(u => String(u._id) === String(log.userId));
-  const entries = log.entries?.length
-    ? log.entries
-    : [{ projectId: log.projectId, moduleName: log.moduleName, description: log.description }];
+function LogDetailModal({ log, users, projects, isDarkMode, onClose }) {
+  const bgScreen=isDarkMode?'bg-[#131313]':'bg-gray-100'; const bgCard=isDarkMode?'bg-[#1c1b1b]':'bg-white'; const bgInputAlt=isDarkMode?'bg-[#131313]':'bg-gray-50'; const borderColor=isDarkMode?'border-[#ffffff1a]':'border-gray-200'; const textColor=isDarkMode?'text-white':'text-gray-900'; const textMuted=isDarkMode?'text-[#888]':'text-gray-500';
+  const emp = users.find(u=>String(u._id)===String(log.userId));
+  const entries = log.entries?.length ? log.entries : [{projectId:log.projectId,moduleName:log.moduleName,description:log.description}];
 
   return (
     <Modal visible animationType="slide" transparent onRequestClose={onClose}>
-      <View style={dl.overlay}>
-        <View style={dl.sheet}>
-          <View style={dl.sheetHeader}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <BookCheck size={14} color="#2573e6" />
-              <Text style={dl.sheetTitle}>LOG DETAILS</Text>
+      <View className={`flex-1 mt-10 rounded-t-2xl border-t ${bgScreen} ${borderColor}`}>
+        <View className={`p-4 border-b flex-row justify-between items-center rounded-t-2xl ${bgCard} ${borderColor}`}>
+          <View className="flex-row items-center"><BookCheck size={16} color={isDarkMode?'#adc6ff':'#2573e6'}/><Text className={`font-bold text-lg tracking-wider ml-2 ${textColor}`}>LOG DETAILS</Text></View>
+          <TouchableOpacity onPress={onClose} className="bg-gray-500 p-2 rounded-full"><X size={16} color="#fff"/></TouchableOpacity>
+        </View>
+        <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false}>
+          <View className={`border rounded-lg p-4 mb-4 ${bgCard} ${borderColor}`}>
+            <View className="flex-row gap-4 mb-3">
+              <View className="flex-1"><Text className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${textMuted}`}>EMPLOYEE</Text><Text className={`text-sm font-bold ${textColor}`}>{emp?.name||log.userName||'Unknown'}</Text></View>
+              <View className="flex-1"><Text className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${textMuted}`}>DATE</Text><Text className={`text-sm font-bold ${textColor}`}>{fmt(log.logDate||log.date||log.createdAt)}</Text></View>
             </View>
-            <TouchableOpacity onPress={onClose}><X size={18} color="#6b7280" /></TouchableOpacity>
           </View>
-          <ScrollView style={{ padding: 16 }} showsVerticalScrollIndicator={false}>
-            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={dl.infoLabel}>EMPLOYEE</Text>
-                <Text style={dl.infoValue}>{emp?.name || log.userName || 'Unknown'}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={dl.infoLabel}>DATE</Text>
-                <Text style={dl.infoValue}>{fmt(log.logDate || log.date || log.createdAt)}</Text>
-              </View>
-            </View>
-            <Text style={[dl.infoLabel, { marginBottom: 10 }]}>WORK ENTRIES ({entries.length})</Text>
-            {entries.map((entry, i) => {
-              const proj = (projects || []).find(p => p._id === (entry.projectId?._id || entry.projectId));
-              return (
-                <View key={i} style={dl.entryCard}>
-                  <View style={{ flexDirection: 'row', gap: 12, marginBottom: 8 }}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={dl.entryLabel}>PROJECT</Text>
-                      <Text style={dl.entryValue}>{proj?.name || entry.projectName || '—'}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={dl.entryLabel}>MODULE</Text>
-                      <Text style={dl.entryValue}>{entry.moduleTitle || entry.moduleName || 'N/A'}</Text>
-                    </View>
-                  </View>
-                  <Text style={dl.entryLabel}>DESCRIPTION</Text>
-                  <View style={dl.descBox}>
-                    <Text style={dl.descText}>{entry.description || 'No description provided.'}</Text>
-                  </View>
+          <Text className={`text-[9px] font-bold uppercase tracking-widest mb-2 ${textMuted}`}>WORK ENTRIES ({entries.length})</Text>
+          {entries.map((entry,i)=>{
+            const proj = projects.find(p=>p._id===(entry.projectId?._id||entry.projectId));
+            return (
+              <View key={i} className={`border rounded-lg p-4 mb-3 ${bgCard} ${borderColor}`}>
+                <View className="flex-row gap-4 mb-3">
+                  <View className="flex-1"><Text className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${textMuted}`}>PROJECT</Text><Text className={`text-sm font-bold ${textColor}`}>{proj?.name||entry.projectName||'—'}</Text></View>
+                  <View className="flex-1"><Text className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${textMuted}`}>MODULE</Text><Text className={`text-sm font-bold ${textColor}`}>{entry.moduleTitle||entry.moduleName||'N/A'}</Text></View>
                 </View>
-              );
-            })}
-            {log.todos?.length > 0 && (
-              <View style={{ marginTop: 12 }}>
-                <Text style={dl.infoLabel}>TODAY'S PLANNED TASKS</Text>
-                {log.todos.map((t, i) => (
-                  <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                    <View style={{ width: 14, height: 14, borderWidth: 1, borderColor: t.completed ? '#47ff8a' : '#374151', backgroundColor: t.completed ? '#47ff8a20' : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
-                      {t.completed && <X size={8} color="#47ff8a" />}
-                    </View>
-                    <Text style={[dl.entryValue, t.completed && { textDecorationLine: 'line-through', color: '#6b7280' }]}>{t.task}</Text>
-                  </View>
-                ))}
+                <Text className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${textMuted}`}>DESCRIPTION</Text>
+                <View className={`border rounded-lg p-3 ${bgInputAlt} ${borderColor}`}><Text className={`text-xs leading-5 ${textColor}`}>{entry.description||'No description.'}</Text></View>
               </View>
-            )}
-            <View style={{ height: 16 }} />
-          </ScrollView>
-          <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: '#1f2937' }}>
-            <TouchableOpacity style={dl.closeBtn} onPress={onClose}>
-              <Text style={dl.closeBtnText}>CLOSE</Text>
-            </TouchableOpacity>
-          </View>
+            );
+          })}
+          {log.todos?.length>0&&<View className="mb-4">
+            <Text className={`text-[9px] font-bold uppercase tracking-widest mb-2 ${textMuted}`}>TODAY'S PLANNED TASKS</Text>
+            {log.todos.map((t,i)=>(<View key={i} className="flex-row items-center gap-2 mb-2">
+              <View className={`w-4 h-4 rounded border items-center justify-center ${t.completed?'bg-[#10b9811a] border-[#10b98140]':borderColor}`}>{t.completed&&<Text className="text-[#10b981] text-[8px]">✓</Text>}</View>
+              <Text className={`text-xs ${t.completed?'text-[#10b981]':textColor} ${t.completed?'line-through':''}`}>{t.task}</Text>
+            </View>))}
+          </View>}
+        </ScrollView>
+        <View className={`p-4 border-t ${bgCard} ${borderColor}`}>
+          <TouchableOpacity onPress={onClose} className={`w-full border py-3 rounded-lg items-center ${isDarkMode?'bg-[#201f1f]':'bg-gray-100'} ${borderColor}`}><Text className={`font-bold text-xs uppercase tracking-widest ${textColor}`}>CLOSE</Text></TouchableOpacity>
         </View>
       </View>
     </Modal>
   );
 }
-
-export default function DailyLogsScreen() {
-  const [logs, setLogs]           = useState([]);
-  const [users, setUsers]         = useState([]);
-  const [projects, setProjects]   = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [search, setSearch]       = useState('');
-  const [selected, setSelected]   = useState(null);
-
-  const today = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
-
-  const load = useCallback(async () => {
-    try {
-      const [l, u, p] = await Promise.allSettled([getAllLogs(), getUsers(), getProjects()]);
-      setLogs(l.status === 'fulfilled' ? l.value : []);
-      setUsers(u.status === 'fulfilled' ? u.value : []);
-      setProjects(p.status === 'fulfilled' ? p.value : []);
-    } catch {} finally { setLoading(false); setRefreshing(false); }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-  const onRefresh = () => { setRefreshing(true); load(); };
-
-  const filtered = logs.filter(l => {
-    const emp = users.find(u => String(u._id) === String(l.userId));
-    const name = emp?.name || l.userName || '';
-    return !search || name.toLowerCase().includes(search.toLowerCase());
-  });
-
-  const submittedToday = logs.filter(l => (l.logDate || l.date || l.createdAt || '').startsWith(today)).length;
-  const missingToday = users.filter(u => ['employee', 'lead', 'contributor', 'reviewer'].includes(u.globalRole) && !logs.some(l => String(l.userId) === String(u._id) && (l.logDate || '').startsWith(today))).length;
-
-  return (
-    <SafeAreaView style={dl.safe} edges={['bottom']}>
-      <View style={dl.header}>
-        <View>
-          <Text style={dl.headerSub}>DEPARTMENT</Text>
-          <Text style={dl.headerTitle}>Daily Logs</Text>
-        </View>
-        <View style={{ gap: 2, alignItems: 'flex-end' }}>
-          <Text style={{ fontSize: 9, color: '#6b7280', fontWeight: '700', letterSpacing: 1 }}>SUBMITTED / MISSING</Text>
-          <Text style={{ fontSize: 18, fontWeight: '800', color: '#ffffff' }}>
-            <Text style={{ color: '#2573e6' }}>{loading ? '—' : submittedToday}</Text>
-            <Text style={{ color: '#374151' }}> / </Text>
-            <Text style={{ color: '#ff4747' }}>{loading ? '—' : missingToday}</Text>
-          </Text>
-        </View>
-      </View>
-
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2573e6" />}>
-
-        <View style={dl.searchBox}>
-          <Search size={14} color="#6b7280" />
-          <TextInput style={dl.searchInput} value={search} onChangeText={setSearch} placeholder="Search employee or project..." placeholderTextColor="#4b5563" />
-          {!!search && <TouchableOpacity onPress={() => setSearch('')}><X size={14} color="#6b7280" /></TouchableOpacity>}
-        </View>
-
-        {loading ? <ActivityIndicator color="#2573e6" style={{ marginTop: 40 }} /> :
-         filtered.length === 0 ? <View style={dl.empty}><BookOpen size={32} color="#374151" /><Text style={dl.emptyText}>No logs found</Text></View> :
-         filtered.map(log => {
-           const emp = users.find(u => String(u._id) === String(log.userId));
-           const firstEntry = log.entries?.[0] || { projectId: log.projectId, moduleName: log.moduleName };
-           const proj = projects.find(p => p._id === (firstEntry.projectId?._id || firstEntry.projectId));
-           return (
-             <TouchableOpacity key={log._id} style={dl.card} onPress={() => setSelected(log)}>
-               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                 <View style={{ flex: 1 }}>
-                   <Text style={dl.cardName}>{emp?.name || log.userName || 'Unknown Employee'}</Text>
-                   <Text style={dl.cardProj}>{proj?.name || 'No project'}</Text>
-                   {firstEntry.moduleName && (
-                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                       <Layers size={10} color="#6b7280" />
-                       <Text style={{ fontSize: 10, color: '#6b7280' }}>{firstEntry.moduleName}</Text>
-                     </View>
-                   )}
-                 </View>
-                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                   <View style={{ backgroundColor: '#47ff8a18', borderWidth: 1, borderColor: '#47ff8a40', paddingHorizontal: 7, paddingVertical: 3 }}>
-                     <Text style={{ fontSize: 9, fontWeight: '800', color: '#47ff8a' }}>SUBMITTED</Text>
-                   </View>
-                   <ChevronRight size={14} color="#6b7280" />
-                 </View>
-               </View>
-               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                 <Calendar size={11} color="#6b7280" />
-                 <Text style={dl.cardDate}>{fmt(log.logDate || log.date || log.createdAt)}</Text>
-               </View>
-             </TouchableOpacity>
-           );
-         })}
-
-        {/* Missing logs */}
-        {!loading && users
-          .filter(u => ['employee', 'lead'].includes(u.globalRole) && !logs.some(l => String(l.userId) === String(u._id) && (l.logDate || '').startsWith(today)))
-          .map(u => (
-            <View key={`missing-${u._id}`} style={[dl.card, { opacity: 0.7 }]}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View>
-                  <Text style={dl.cardName}>{u.name}</Text>
-                  <Text style={dl.cardProj}>No log submitted</Text>
-                </View>
-                <View style={{ backgroundColor: '#ff474718', borderWidth: 1, borderColor: '#ff474740', paddingHorizontal: 7, paddingVertical: 3 }}>
-                  <Text style={{ fontSize: 9, fontWeight: '800', color: '#ff4747' }}>MISSING</Text>
-                </View>
-              </View>
-            </View>
-          ))}
-
-        <View style={{ height: 32 }} />
-      </ScrollView>
-
-      {selected && <LogDetailModal log={selected} users={users} projects={projects} onClose={() => setSelected(null)} />}
-    </SafeAreaView>
-  );
-}
-
-const dl = StyleSheet.create({
-  safe:         { flex: 1, backgroundColor: '#0d0d0d' },
-  header:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#1f2937', backgroundColor: '#131313' },
-  headerSub:    { fontSize: 10, color: '#6b7280', letterSpacing: 1.5, fontWeight: '600' },
-  headerTitle:  { fontSize: 22, fontWeight: '800', color: '#ffffff' },
-  searchBox:    { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#1f2937', paddingHorizontal: 10, paddingVertical: 8, marginBottom: 12 },
-  searchInput:  { flex: 1, fontSize: 12, color: '#e5e7eb' },
-  card:         { backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#1f2937', padding: 14, marginBottom: 8 },
-  cardName:     { fontSize: 13, fontWeight: '700', color: '#ffffff' },
-  cardProj:     { fontSize: 11, color: '#6b7280', marginTop: 2 },
-  cardDate:     { fontSize: 11, color: '#9ca3af' },
-  empty:        { alignItems: 'center', paddingVertical: 60, gap: 12 },
-  emptyText:    { fontSize: 13, color: '#4b5563' },
-  overlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
-  sheet:        { backgroundColor: '#1a1a1a', borderTopWidth: 1, borderTopColor: '#1f2937', maxHeight: '90%' },
-  sheetHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#1f2937' },
-  sheetTitle:   { fontSize: 11, fontWeight: '800', color: '#ffffff', letterSpacing: 1.5 },
-  infoLabel:    { fontSize: 9, color: '#6b7280', fontWeight: '700', letterSpacing: 1.2, marginBottom: 2 },
-  infoValue:    { fontSize: 13, color: '#e5e7eb', fontWeight: '600' },
-  entryCard:    { backgroundColor: '#131313', borderWidth: 1, borderColor: '#1f2937', padding: 12, marginBottom: 8 },
-  entryLabel:   { fontSize: 9, color: '#6b7280', fontWeight: '700', letterSpacing: 1, marginBottom: 2 },
-  entryValue:   { fontSize: 12, color: '#e5e7eb' },
-  descBox:      { backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#1f2937', padding: 10, marginTop: 4 },
-  descText:     { fontSize: 12, color: '#9ca3af', lineHeight: 18 },
-  closeBtn:     { paddingVertical: 12, borderWidth: 1, borderColor: '#1f2937', alignItems: 'center' },
-  closeBtnText: { fontSize: 11, color: '#9ca3af', fontWeight: '700', letterSpacing: 1 },
-});
