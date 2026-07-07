@@ -2,68 +2,38 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { createDrawerNavigator, DrawerContentScrollView } from '@react-navigation/drawer';
 import {
-  LayoutDashboard,
-  Clock,
-  Umbrella,
-  Users,
-  CheckSquare,
-  ClipboardList,
-  FileText,
-  BarChart2,
-  BookOpen,
-  Bug,
-  Trophy,
-  Bell,
-  LogOut,
-  FolderOpen,
-  FileStack,
-  UserCheck,
+  LayoutDashboard, FolderKanban, ListTodo, Bug, Users, Users2,
+  Umbrella, CreditCard, BarChart3, BookCheck, BookOpen, FileText,
+  Bell, LogOut,
 } from 'lucide-react-native';
 import useAuthStore from '../store/authStore';
-
-import LeadDashboard from '../screens/Lead/LeadDashboard';
-import EmployeeScreen from '../screens/Lead/EmployeeScreen';
-import ProjectsScreen from '../screens/Lead/ProjectsScreen';
-import TasksScreen from '../screens/Lead/TasksScreen';
-import LeaderboardScreen from '../screens/Lead/LeaderboardScreen';
-
-// Placeholder screen factory for screens not yet built
-function PlaceholderScreen({ route }) {
-  return (
-    <View style={styles.placeholder}>
-      <Text style={styles.placeholderTitle}>{route.name}</Text>
-      <Text style={styles.placeholderSub}>Coming soon</Text>
-    </View>
-  );
-}
+import LeadTabNavigator from './LeadTabNavigator';
 
 const Drawer = createDrawerNavigator();
 
 const NAV_ITEMS = [
-  { name: 'Dashboard',       label: 'DASHBOARD',        Icon: LayoutDashboard, component: LeadDashboard },
-  { name: 'Attendance',      label: 'ATTENDANCE',        Icon: Clock,           component: PlaceholderScreen },
-  { name: 'MyLeaves',        label: 'MY LEAVES',         Icon: Umbrella,        component: PlaceholderScreen },
-  { name: 'Employees',       label: 'EMPLOYEES',         Icon: Users,           component: EmployeeScreen },
-  { name: 'TeamAttendance',  label: 'TEAM ATTENDANCE',   Icon: Users,           component: PlaceholderScreen },
-  { name: 'LeaveApprovals',  label: 'LEAVE APPROVALS',   Icon: UserCheck,       component: PlaceholderScreen },
-  { name: 'Expenses',        label: 'EXPENSES',          Icon: CheckSquare,     component: PlaceholderScreen },
-  { name: 'Projects',        label: 'PROJECTS',          Icon: FolderOpen,      component: ProjectsScreen },
-  { name: 'Tasks',           label: 'TASKS',             Icon: ClipboardList,   component: TasksScreen },
-  { name: 'Templates',       label: 'TEMPLATES',         Icon: FileStack,       component: PlaceholderScreen },
-  { name: 'Reports',         label: 'REPORTS',           Icon: FileText,        component: PlaceholderScreen },
-  { name: 'EmployeeReport',  label: 'EMPLOYEE REPORT',   Icon: BarChart2,       component: PlaceholderScreen },
-  { name: 'DailyLogs',       label: 'DAILY LOGS',        Icon: BookOpen,        component: PlaceholderScreen },
-  { name: 'Issues',          label: 'ISSUES',            Icon: Bug,             component: PlaceholderScreen },
-  { name: 'KTDocuments',     label: 'KT DOCUMENTS',      Icon: FileText,        component: PlaceholderScreen },
-  { name: 'Leaderboard',     label: 'LEADERBOARD',       Icon: Trophy,          component: LeaderboardScreen },
-  { name: 'Notifications',   label: 'NOTIFICATIONS',     Icon: Bell,            component: PlaceholderScreen },
+  { name: 'LeadDashboardMain', label: 'DASHBOARD',       Icon: LayoutDashboard },
+  { name: 'Projects',          label: 'PROJECTS',        Icon: FolderKanban    },
+  { name: 'Tasks',             label: 'TASKS',           Icon: ListTodo        },
+  { name: 'Issues',            label: 'ISSUES',          Icon: Bug             },
+  { name: 'Employees',         label: 'EMPLOYEES',       Icon: Users           },
+  { name: 'TeamAttendance',    label: 'TEAM ATTENDANCE', Icon: Users2          },
+  { name: 'LeaveApprovals',    label: 'LEAVE APPROVALS', Icon: Umbrella        },
+  { name: 'Expenses',          label: 'EXPENSES',        Icon: CreditCard      },
+  { name: 'Leaderboard',       label: 'LEADERBOARD',     Icon: BarChart3       },
+  { name: 'DailyLogs',         label: 'DAILY LOGS',      Icon: BookCheck       },
+  { name: 'KTDocuments',       label: 'KT DOCUMENTS',    Icon: BookOpen        },
+  { name: 'Reports',           label: 'REPORTS',         Icon: FileText        },
+  { name: 'EmployeeReport',    label: 'EMPLOYEE REPORT', Icon: BarChart3       },
+  { name: 'Notifications',     label: 'NOTIFICATIONS',   Icon: Bell            },
 ];
 
-// ── Custom Drawer Content ──────────────────────────────────────────────────────
+// ── Drawer Content Component ──────────────────────────────────────────────────
 function LeadDrawerContent(props) {
   const { navigation, state } = props;
   const { logout, user } = useAuthStore();
-  const activeIndex = state.index;
+
+  const activeIndex = state?.index ?? 0;
 
   // Get initials for avatar
   const initials = user?.name
@@ -75,7 +45,7 @@ function LeadDrawerContent(props) {
       {/* ── Header ── */}
       <View style={styles.drawerHeader}>
         <Text style={styles.drawerBrand}>TRAKY</Text>
-        <Text style={styles.drawerSubtitle}>EMPLOYEE PORTAL</Text>
+        <Text style={styles.drawerSubtitle}>LEAD PORTAL</Text>
       </View>
 
       {/* ── Nav Items ── */}
@@ -130,41 +100,32 @@ export default function LeadNavigator() {
     <Drawer.Navigator
       drawerContent={LeadDrawerContent}
       screenOptions={{
-        headerStyle: { backgroundColor: '#ffffff' },
-        headerTintColor: '#0f172a',
-        headerTitleStyle: { fontWeight: '700', fontSize: 16 },
-        drawerStyle: { width: 260, backgroundColor: '#ffffff' },
-        swipeEdgeWidth: 60,
+        headerShown: false,
+        drawerStyle: { backgroundColor: '#ffffff', width: 280 },
       }}>
-      {NAV_ITEMS.map((item) => (
-        <Drawer.Screen
-          key={item.name}
-          name={item.name}
-          component={item.component}
-          options={{ title: item.label }}
-        />
-      ))}
+      <Drawer.Screen
+        name="LeadTabs"
+        component={LeadTabNavigator}
+        options={{ title: 'APP MODULES', drawerItemStyle: { display: 'none' } }}
+      />
     </Drawer.Navigator>
   );
 }
 
-// ── Styles ─────────────────────────────────────────────────────────────────────
+// ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  drawerContainer: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
+  drawerContainer: { flex: 1, backgroundColor: '#ffffff' },
   drawerHeader: {
     paddingHorizontal: 20,
     paddingTop: 56,
-    paddingBottom: 20,
+    paddingBottom: 24,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(15,23,42,0.1)',
+    borderBottomColor: '#e5e7eb',
   },
   drawerBrand: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '900',
-    color: '#0f172a',
+    color: '#111827',
     letterSpacing: 2,
   },
   drawerSubtitle: {
@@ -172,74 +133,56 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#6b7280',
     letterSpacing: 1.5,
-    marginTop: 2,
+    marginTop: 4,
   },
-  scrollContent: {
-    paddingVertical: 8,
-  },
+  scrollContent: { paddingVertical: 12 },
   navItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    marginHorizontal: 8,
-    borderRadius: 6,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    marginHorizontal: 12,
+    marginBottom: 4,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
   },
-  navItemActive: {
-    backgroundColor: '#2573e6',
-  },
+  navItemActive: { backgroundColor: '#ebf3fc' },
   navLabel: {
-    fontSize: 11,
+    marginLeft: 16,
+    fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 0.8,
     color: '#1f2937',
+    letterSpacing: 1,
   },
-  navLabelActive: {
-    color: '#ffffff',
-  },
+  navLabelActive: { color: '#2573e6' },
   signOutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 16,
     paddingHorizontal: 20,
-    paddingVertical: 18,
+    marginHorizontal: 12,
+    marginBottom: 20,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(15,23,42,0.1)',
+    borderTopColor: '#e5e7eb',
   },
   avatar: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#ef4444',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    color: '#ffffff',
     fontSize: 12,
     fontWeight: '700',
+    color: '#ffffff',
   },
   signOutLabel: {
-    fontSize: 11,
+    marginLeft: 8,
+    fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 0.8,
     color: '#1f2937',
-    marginLeft: 10,
-  },
-  placeholder: {
-    flex: 1,
-    backgroundColor: '#f6f7f9',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  placeholderTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  placeholderSub: {
-    fontSize: 13,
-    color: '#6b7280',
+    letterSpacing: 1,
   },
 });

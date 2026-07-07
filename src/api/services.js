@@ -398,11 +398,12 @@ export async function getLeaveById(id) {
 // ═══════════════════════════════════════════════════════════════
 export async function getMyExpenses(params = {}) {
   const { data } = await client.get('/expenses/my', { params });
-  return data;
+  // Backend returns { records: [...], pagination: {...} }
+  return data?.records ?? data?.expenses ?? (Array.isArray(data) ? data : []);
 }
 export async function getAllExpenses(params = {}) {
   const { data } = await client.get('/expenses/all', { params });
-  return data;
+  return data?.records ?? data?.expenses ?? (Array.isArray(data) ? data : []);
 }
 export async function getExpenseById(id) {
   const { data } = await client.get(`/expenses/${id}`);
@@ -428,7 +429,8 @@ export async function processExpensePayment(id, payload) {
 // ═══════════════════════════════════════════════════════════════
 export async function getLeaderboard(period = 'all') {
   const { data } = await client.get('/leaderboard', { params: { period } });
-  return data;
+  // Backend returns { data: [...], departmentAverage: number }
+  return { data: data?.data ?? [], departmentAverage: data?.departmentAverage ?? 0 };
 }
 export async function getTeamLeaderboard(projectId, period = 'all') {
   const { data } = await client.get(`/leaderboard/team/${projectId}`, { params: { period } });
@@ -444,7 +446,8 @@ export async function recalculateLeaderboard() {
 // ═══════════════════════════════════════════════════════════════
 export async function getAllLogs(params = {}) {
   const { data } = await client.get('/daily-logs', { params });
-  return data?.logs ?? data?.data ?? (Array.isArray(data) ? data : []);
+  // Backend returns { data: [...], pagination: {...} }
+  return data?.data ?? data?.logs ?? (Array.isArray(data) ? data : []);
 }
 export async function getTodayLog() {
   const { data } = await client.get('/daily-logs/today');
@@ -552,7 +555,8 @@ export async function sendReportEmail(payload) {
 // ═══════════════════════════════════════════════════════════════
 export async function getNotifications(params = {}) {
   const { data } = await client.get('/notifications', { params });
-  return data;
+  // Backend returns { notifications: [...], unreadCount, total, page, pages }
+  return { notifications: data?.notifications ?? [], unreadCount: data?.unreadCount ?? 0, total: data?.total ?? 0 };
 }
 export async function getUnreadCount() {
   const { data } = await client.get('/notifications/unread-count');

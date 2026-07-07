@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Users, UserPlus, Search, X, Check, AlertCircle, Pencil, Trash2, ChevronDown } from 'lucide-react-native';
 import { getUsers, createUser, updateUser, deleteUser, getDepartments } from '../../api/services';
+import client from '../../api/client';
 import useAuthStore from '../../store/authStore';
 import useThemeStore from '../../store/themeStore';
 
@@ -20,18 +21,21 @@ export default function EmployeeScreen() {
   const [saving, setSaving]     = useState(false);
   const [search, setSearch]     = useState('');
   const [modal, setModal]       = useState(null);
+  const [branches, setBranches] = useState([]);
 
   const myDeptId = typeof user?.departmentId === 'object' ? user.departmentId?._id : user?.departmentId;
 
   const load = useCallback(async () => {
     try {
-      const [u, d] = await Promise.allSettled([getUsers(), getDepartments()]);
+      const [u, d, b] = await Promise.allSettled([getUsers(), getDepartments(), client.get('/branches')]);
       const usersArr = u.status==='fulfilled' ? u.value : [];
       const deptsArr = d.status==='fulfilled' ? d.value : [];
+      const branchesArr = b.status==='fulfilled' ? (b.value?.data?.data || b.value?.data || []) : [];
       const scoped = myDeptId ? usersArr.filter(u => { const did = typeof u.departmentId==='object' ? u.departmentId?._id : u.departmentId; return String(did) === String(myDeptId); }) : usersArr;
       const deptMap = Object.fromEntries(deptsArr.map(d => [String(d._id), d.departmentName]));
       setMembers(scoped.map(u => { const dkey = typeof u.departmentId==='object' ? String(u.departmentId?._id) : String(u.departmentId||''); return { ...u, departmentName: deptMap[dkey] || null }; }));
       setDepts(deptsArr);
+      setBranches(branchesArr);
     } catch {} finally { setLoading(false); setRefreshing(false); }
   }, [myDeptId]);
 
@@ -120,7 +124,7 @@ export default function EmployeeScreen() {
         <View className="h-8" />
       </ScrollView>
       {(modal?.type==='add' || modal?.type==='edit') && (
-        <EmployeeFormModal mode={modal.type} initial={modal.member} departments={depts} currentDeptId={myDeptId}
+        <EmployeeFormModal mode={modal.type} initial={modal.member} departments={depts} branches={branches} currentDeptId={myDeptId}
           creatorRole={user?.globalRole||user?.role} isDarkMode={isDarkMode}
           saving={saving} onClose={() => setModal(null)} onSave={handleSave} />
       )}
@@ -128,14 +132,18 @@ export default function EmployeeScreen() {
   );
 }
 
-function EmployeeFormModal({ mode, initial, departments, currentDeptId, creatorRole, isDarkMode, saving, onClose, onSave }) {
+function EmployeeFormModal({ mode, initial, departments, branches, currentDeptId, creatorRole, isDarkMode, saving, onClose, onSave }) {
   const isDH = creatorRole === 'department_head';
-  const [form, setForm] = useState({ name: initial?.name||'', email: initial?.email||'', globalRole: initial?.globalRole||'employee', departmentId: (typeof initial?.departmentId==='object' ? initial?.departmentId?._id : initial?.departmentId) || currentDeptId || '', isActive: initial?.isActive!==false, branch: initial?.branch||'', shiftTiming: initial?.shiftTiming||'' });
+  const [form, setForm] = useState({ name: initial?.name||'', email: initial?.email||'', globalRole: initial?.globalRole||'employee', departmentId: (typeof initial?.departmentId==='object' ? initial?.departmentId?._id : initial?.departmentId) || currentDeptId || '', isActive: initial?.isActive!==false, branchId: (typeof initial?.branchId==='object' ? initial?.branchId?._id : initial?.branchId)||'', shiftTiming: initial?.shiftTiming||'' });
   const [err, setErr] = useState('');
   const [openDropdown, setOpenDropdown] = useState(null);
   const ROLES = isDH ? ['employee','lead'] : ['department_head','lead','employee'];
-  const BRANCHES = ['Main Office', 'Branch A', 'Branch B'];
-  const SHIFTS = ['09:00 AM - 06:00 PM', '10:00 AM - 07:00 PM', 'Night Shift'];
+  const SHIFTS = [
+    { _id: '9-5', name: '9 AM – 5 PM' },
+    { _id: '10-6', name: '10 AM – 6 PM' },
+    { _id: '11-7', name: '11 AM – 7 PM' },
+    { _id: 'custom', name: 'Custom' }
+  ];
   const bgCard = isDarkMode ? 'bg-[#1c1b1b]' : 'bg-white';
   const bgInputAlt = isDarkMode ? 'bg-[#131313]' : 'bg-gray-50';
   const borderColor = isDarkMode ? 'border-[#ffffff1a]' : 'border-gray-200';
@@ -203,14 +211,17 @@ function EmployeeFormModal({ mode, initial, departments, currentDeptId, creatorR
 
             <Text className={`text-[10px] font-bold mb-2 uppercase tracking-widest ${textMuted}`}>Branch</Text>
             <TouchableOpacity onPress={() => setOpenDropdown(openDropdown==='branch'?null:'branch')} className={`border rounded-lg p-3 mb-4 flex-row justify-between items-center ${bgInputAlt} ${borderColor}`}>
-              <Text className={`text-xs ${textColor}`}>{form.branch || 'No branch assigned'}</Text>
+              <Text className={`text-xs ${textColor}`}>{form.branchId ? branches.find(b=>b._id===form.branchId)?.branchName || 'Unknown' : 'No branch assigned'}</Text>
               <ChevronDown size={14} color={isDarkMode?'#888':'#9ca3af'} />
             </TouchableOpacity>
             {openDropdown === 'branch' && (
               <View className={`border rounded-lg mt-[-12px] mb-4 overflow-hidden ${bgCard} ${borderColor}`}>
-                {BRANCHES.map(b => (
-                  <TouchableOpacity key={b} onPress={() => { setForm({...form, branch: b}); setOpenDropdown(null); }} className={`p-3 border-b ${borderColor}`}>
-                    <Text className={`text-xs ${textColor}`}>{b}</Text>
+                <TouchableOpacity onPress={() => { setForm({...form, branchId: ''}); setOpenDropdown(null); }} className={`p-3 border-b ${borderColor}`}>
+                  <Text className={`text-xs ${textColor}`}>No branch assigned</Text>
+                </TouchableOpacity>
+                {branches.map(b => (
+                  <TouchableOpacity key={b._id} onPress={() => { setForm({...form, branchId: b._id}); setOpenDropdown(null); }} className={`p-3 border-b ${borderColor}`}>
+                    <Text className={`text-xs ${textColor}`}>{b.branchName}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -218,14 +229,14 @@ function EmployeeFormModal({ mode, initial, departments, currentDeptId, creatorR
 
             <Text className={`text-[10px] font-bold mb-2 uppercase tracking-widest ${textMuted}`}>Shift Timing *</Text>
             <TouchableOpacity onPress={() => setOpenDropdown(openDropdown==='shift'?null:'shift')} className={`border rounded-lg p-3 mb-4 flex-row justify-between items-center ${bgInputAlt} ${borderColor}`}>
-              <Text className={`text-xs ${textColor}`}>{form.shiftTiming || 'Select shift timing...'}</Text>
+              <Text className={`text-xs ${textColor}`}>{form.shiftTiming ? SHIFTS.find(s=>s._id===form.shiftTiming)?.name || form.shiftTiming : 'Select shift timing...'}</Text>
               <ChevronDown size={14} color={isDarkMode?'#888':'#9ca3af'} />
             </TouchableOpacity>
             {openDropdown === 'shift' && (
               <View className={`border rounded-lg mt-[-12px] mb-4 overflow-hidden ${bgCard} ${borderColor}`}>
                 {SHIFTS.map(s => (
-                  <TouchableOpacity key={s} onPress={() => { setForm({...form, shiftTiming: s}); setOpenDropdown(null); }} className={`p-3 border-b ${borderColor}`}>
-                    <Text className={`text-xs ${textColor}`}>{s}</Text>
+                  <TouchableOpacity key={s._id} onPress={() => { setForm({...form, shiftTiming: s._id}); setOpenDropdown(null); }} className={`p-3 border-b ${borderColor}`}>
+                    <Text className={`text-xs ${textColor}`}>{s.name}</Text>
                   </TouchableOpacity>
                 ))}
               </View>

@@ -61,17 +61,17 @@ export default function DeptHeadDashboard({ navigation }) {
         client.get('/projects/my-projects'),
         client.get('/users/colleagues'),
         client.get('/leave/approvals?limit=50'),
-        client.get('/expenses/all?limit=50'),
+        client.get('/expenses/my?limit=50'),
         client.get('/bugs?limit=50'),
         client.get('/daily-logs?limit=50'),
       ]);
       setData({
-        tasks:    extract(tR, 'tasks'),
-        projects: extract(pR, 'projects'),
+        tasks:    extract(tR, 'tasks', 'data'),
+        projects: extract(pR, 'projects', 'data'),
         members:  extract(mR, 'data', 'users'),
         leaves:   extract(lR, 'records'),
         expenses: extract(exR, 'records', 'expenses'),
-        bugs:     extract(bR, 'bugs'),
+        bugs:     extract(bR, 'bugs', 'data'),
         logs:     extract(lgR, 'data', 'logs'),
       });
     } catch (e) {
