@@ -1,415 +1,245 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  RefreshControl,
-  ActivityIndicator,
-  StyleSheet,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  ClipboardList,
-  Clock3,
-  CheckCircle2,
-  AlertCircle,
-  FolderOpen,
-  ChevronRight,
-  Menu,
+  ClipboardList, CheckCircle2, AlertCircle, Users, FolderOpen,
+  ArrowRight, Bug, CreditCard, BookCheck, Umbrella, Shield,
 } from 'lucide-react-native';
 import useAuthStore from '../../store/authStore';
+import useThemeStore from '../../store/themeStore';
 import client from '../../api/client';
 
-// ── Stat Card ─────────────────────────────────────────────────────────────────
-function StatCard({ label, value, color, Icon, loading }) {
+const extract = (res, ...keys) => {
+  if (res.status !== 'fulfilled') return [];
+  const d = res.value?.data;
+  if (!d) return [];
+  if (Array.isArray(d)) return d;
+  for (const k of keys) { if (Array.isArray(d[k])) return d[k]; }
+  if (Array.isArray(d.data)) return d.data;
+  return [];
+};
+
+const STATUS_COLORS = {
+  IN_PROGRESS: { label: 'In Progress', color: '#47c8ff', bg: '#47c8ff1a' },
+  COMPLETED:   { label: 'Completed',   color: '#47ff8a', bg: '#47ff8a1a' },
+  TODO:        { label: 'Pending',     color: '#e8a847', bg: '#e8a8471a' },
+  PENDING:     { label: 'Pending',     color: '#e8a847', bg: '#e8a8471a' },
+  DONE:        { label: 'Done',        color: '#47ff8a', bg: '#47ff8a1a' },
+  ACTIVE:      { label: 'Active',      color: '#47c8ff', bg: '#47c8ff1a' },
+};
+
+function StatusBadge({ status }) {
+  const m = STATUS_COLORS[status?.toUpperCase()] || { label: status || '—', color: '#9ca3af', bg: '#9ca3af1a' };
   return (
-    <View style={[styles.statCard, { borderLeftColor: color, borderLeftWidth: 3 }]}>
-      <View style={styles.statTop}>
-        <Text style={styles.statLabel}>{label}</Text>
-        <Icon size={18} color={color} strokeWidth={1.75} />
-      </View>
-      {loading ? (
-        <ActivityIndicator size="small" color={color} style={{ marginTop: 6 }} />
-      ) : (
-        <Text style={[styles.statValue, { color }]}>{value ?? 0}</Text>
-      )}
+    <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, backgroundColor: m.bg, borderWidth: 1, borderColor: m.color + '40' }}>
+      <Text style={{ fontSize: 9, fontWeight: '700', color: m.color, letterSpacing: 0.4, textTransform: 'uppercase' }}>{m.label}</Text>
     </View>
   );
 }
 
-// ── Status Badge ──────────────────────────────────────────────────────────────
-function Badge({ status }) {
-  const map = {
-    TODO:        { bg: '#fef3c7', color: '#d97706', label: 'Pending' },
-    IN_PROGRESS: { bg: '#dbeafe', color: '#2563eb', label: 'In Progress' },
-    IN_REVIEW:   { bg: '#ede9fe', color: '#7c3aed', label: 'In Review' },
-    DONE:        { bg: '#d1fae5', color: '#059669', label: 'Done' },
-    REJECTED:    { bg: '#fee2e2', color: '#dc2626', label: 'Rejected' },
-    PENDING:     { bg: '#fef3c7', color: '#d97706', label: 'Pending' },
-    ACTIVE:      { bg: '#dbeafe', color: '#2563eb', label: 'Active' },
-    COMPLETED:   { bg: '#d1fae5', color: '#059669', label: 'Completed' },
-  };
-  const cfg = map[status?.toUpperCase()] ?? { bg: '#f3f4f6', color: '#6b7280', label: status ?? '—' };
-  return (
-    <View style={[styles.badge, { backgroundColor: cfg.bg }]}>
-      <Text style={[styles.badgeText, { color: cfg.color }]}>{cfg.label}</Text>
-    </View>
-  );
-}
-
-// ── Main Screen ───────────────────────────────────────────────────────────────
 export default function LeadDashboard({ navigation }) {
-  const { user } = useAuthStore();
+  const { user }       = useAuthStore();
+  const { isDarkMode } = useThemeStore();
 
-  const [tasks, setTasks]       = useState([]);
-  const [projects, setProjects] = useState([]);
+  const [data, setData]         = useState({ tasks: [], projects: [], members: [], leaves: [], expenses: [], bugs: [], logs: [] });
   const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const firstName = user?.name?.split(' ')[0] ?? 'Lead';
-
-  const fetchData = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
-      const [tasksRes, projectsRes] = await Promise.allSettled([
-        client.get('/tasks', { params: { limit: 20 } }),
+      setError(null);
+      const [tR, pR, mR, lR, exR, bR, lgR] = await Promise.allSettled([
+        client.get('/tasks?limit=100'),
         client.get('/projects/my-projects'),
+        client.get('/users/colleagues'),
+        client.get('/leave/approvals?limit=50'),
+        client.get('/expenses/my?limit=50'),
+        client.get('/bugs?limit=50'),
+        client.get('/daily-logs?limit=50'),
       ]);
-
-      if (tasksRes.status === 'fulfilled') {
-        const t = tasksRes.value.data;
-        setTasks(t?.tasks ?? (Array.isArray(t) ? t : []));
-      }
-      if (projectsRes.status === 'fulfilled') {
-        const p = projectsRes.value.data;
-        setProjects(p?.projects ?? (Array.isArray(p) ? p : []));
-      }
-    } catch (err) {
-      console.error('Dashboard fetch error:', err);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+      setData({
+        tasks:    extract(tR, 'tasks', 'data'),
+        projects: extract(pR, 'projects', 'data'),
+        members:  extract(mR, 'data', 'users'),
+        leaves:   extract(lR, 'records'),
+        expenses: extract(exR, 'records', 'expenses'),
+        bugs:     extract(bR, 'bugs', 'data'),
+        logs:     extract(lgR, 'data', 'logs'),
+      });
+    } catch { setError('Could not load dashboard data.'); }
+    finally { setLoading(false); setRefreshing(false); }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { loadData(); }, [loadData]);
+  const onRefresh = useCallback(() => { setRefreshing(true); loadData(); }, [loadData]);
 
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    fetchData();
-  }, [fetchData]);
+  const openTasks      = data.tasks.filter(t => t.status !== 'DONE' && t.status !== 'COMPLETED');
+  const activeProjects = data.projects.filter(p => p.status !== 'COMPLETED');
+  const pendingLeaves  = data.leaves.filter(l => !l.status || l.status === 'pending');
+  const openBugs       = data.bugs.filter(b => b.status === 'OPEN' || b.status === 'REOPENED');
+  const today          = new Date().toISOString().slice(0, 10);
+  const todayLogs      = data.logs.filter(l => (l.logDate || l.date || l.createdAt || '').startsWith(today));
 
-  // ── Computed stats ────────────────────────────────────────────────────────
-  const todoCount       = tasks.filter(t => t.status === 'TODO').length;
-  const inProgressCount = tasks.filter(t => t.status === 'IN_PROGRESS').length;
-  const inReviewCount   = tasks.filter(t => t.status === 'IN_REVIEW').length;
-  const doneCount       = tasks.filter(t => t.status === 'DONE').length;
+  const bgScreen   = isDarkMode ? 'bg-[#131313]' : 'bg-gray-50';
+  const bgCard     = isDarkMode ? 'bg-[#1c1b1b]' : 'bg-white';
+  const borderColor= isDarkMode ? 'border-[#ffffff1a]' : 'border-gray-200';
+  const textColor  = isDarkMode ? 'text-white' : 'text-gray-900';
+  const textMuted  = isDarkMode ? 'text-[#888]' : 'text-gray-500';
+  const textAccent = isDarkMode ? 'text-[#adc6ff]' : 'text-[#2573e6]';
 
-  const recentTasks    = tasks.slice(0, 5);
-  const activeProjects = projects.filter(p =>
-    p.status?.toUpperCase() !== 'COMPLETED'
-  ).slice(0, 5);
+  const navigateTo = (screen) => { if (navigation) navigation.navigate(screen); };
+
+  const stats = [
+    { icon: FolderOpen,   label: 'Active Projects',  value: activeProjects.length,  color: '#c847ff' },
+    { icon: ClipboardList,label: 'Open Tasks',        value: openTasks.length,       color: '#47c8ff' },
+    { icon: Users,        label: 'Team Members',      value: data.members.length,    color: '#47ff8a' },
+    { icon: BookCheck,    label: 'Logs Today',        value: todayLogs.length,       color: '#e8a847' },
+    { icon: Bug,          label: 'Open Issues',       value: openBugs.length,        color: '#ff4747' },
+    { icon: CreditCard,   label: 'Pending Expenses',  value: data.expenses.filter(e=>e.status==='pending').length, color: '#47ff8a' },
+  ];
+
+  if (loading && !data.tasks.length) {
+    return (
+      <View className={`flex-1 items-center justify-center ${bgScreen}`}>
+        <ActivityIndicator size="large" color={isDarkMode ? '#adc6ff' : '#2573e6'} />
+      </View>
+    );
+  }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <ScrollView className={`flex-1 p-4 ${bgScreen}`} showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDarkMode ? '#adc6ff' : '#2573e6'} />}>
 
-      {/* ── Top header bar ── */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.openDrawer()}
-          style={styles.menuBtn}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Menu size={22} color="#0f172a" strokeWidth={1.75} />
-        </TouchableOpacity>
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.greeting}>Good day,</Text>
-          <Text style={styles.name}>{firstName} <Text style={styles.namePrimary}>👋</Text></Text>
+      {/* Welcome Header */}
+      <View className="mb-6 mt-2 flex-row justify-between items-center">
+        <View className="flex-1 mr-3">
+          <Text className={`text-[10px] tracking-widest uppercase mb-1 font-bold ${textMuted}`}>Lead</Text>
+          <Text className={`text-xl font-bold ${textColor}`} numberOfLines={2}>
+            Welcome back, <Text className={textAccent}>{user?.name || 'Lead'}</Text>
+          </Text>
         </View>
-        <View style={styles.roleChip}>
-          <Text style={styles.roleText}>LEAD</Text>
+        <View className={`border px-3 py-2 flex-row items-center rounded flex-shrink-0 ${bgCard} ${borderColor}`}>
+          <Shield size={14} color={isDarkMode ? '#adc6ff' : '#2573e6'} />
+          <Text className={`text-[10px] tracking-widest uppercase font-bold ml-1.5 ${textMuted}`}>Lead</Text>
         </View>
       </View>
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2573e6" />
-        }>
-
-        {/* ── Stats Grid ── */}
-        <Text style={styles.sectionTitle}>TASK OVERVIEW</Text>
-        <View style={styles.statsGrid}>
-          <StatCard label="PENDING"     value={todoCount}       color="#d97706" Icon={Clock3}       loading={loading} />
-          <StatCard label="IN PROGRESS" value={inProgressCount} color="#2563eb" Icon={ClipboardList} loading={loading} />
-          <StatCard label="IN REVIEW"   value={inReviewCount}   color="#7c3aed" Icon={AlertCircle}   loading={loading} />
-          <StatCard label="DONE"        value={doneCount}       color="#059669" Icon={CheckCircle2}  loading={loading} />
+      {error && (
+        <View className="bg-[#ff47471a] border border-[#ff47474d] rounded p-3 mb-4 flex-row items-center">
+          <AlertCircle size={16} color="#ff4747" />
+          <Text className="text-[#ff4747] text-xs ml-2">{error}</Text>
         </View>
+      )}
 
-        {/* ── My Tasks ── */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>MY TASKS</Text>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Tasks')}
-            style={styles.viewAllBtn}>
-            <Text style={styles.viewAllText}>VIEW ALL</Text>
-            <ChevronRight size={14} color="#2573e6" strokeWidth={2} />
+      {/* Stats Grid */}
+      <View className="flex-row flex-wrap justify-between mb-6">
+        {stats.map(s => (
+          <View key={s.label} className={`border rounded-lg p-4 mb-3 ${bgCard} ${borderColor}`} style={{ width: '48%' }}>
+            <View className="flex-row items-center mb-3"><s.icon size={16} color={s.color} /></View>
+            <Text className={`text-[10px] tracking-widest uppercase font-bold mb-1 ${textMuted}`} numberOfLines={1}>{s.label}</Text>
+            <Text style={{ color: s.color }} className="text-2xl font-bold">{s.value}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Active Projects */}
+      <View className={`border rounded-lg mb-6 ${bgCard} ${borderColor}`}>
+        <View className={`flex-row justify-between items-center px-4 py-3 border-b ${borderColor}`}>
+          <View className="flex-row items-center"><FolderOpen size={16} color="#c847ff" /><Text className={`text-[10px] tracking-widest uppercase font-bold ml-2 ${textMuted}`}>Active Projects</Text></View>
+          <TouchableOpacity onPress={() => navigateTo('Projects')} className="flex-row items-center">
+            <Text className={`text-[10px] tracking-widest uppercase mr-1 ${textMuted}`}>View All</Text>
+            <ArrowRight size={12} color={isDarkMode ? '#888' : '#555'} />
           </TouchableOpacity>
         </View>
+        {activeProjects.length === 0 ? (
+          <Text className={`text-[10px] tracking-widest uppercase text-center py-6 ${textMuted}`}>No active projects</Text>
+        ) : activeProjects.slice(0, 5).map((p, idx) => (
+          <View key={p._id || idx} className={`flex-row justify-between items-center px-4 py-3 ${idx !== 0 ? `border-t ${borderColor}` : ''}`}>
+            <Text className={`text-xs font-bold flex-1 mr-2 ${textColor}`} numberOfLines={1}>{p.name}</Text>
+            <StatusBadge status={p.status} />
+          </View>
+        ))}
+      </View>
 
-        <View style={styles.card}>
-          {loading ? (
-            <ActivityIndicator color="#2573e6" style={{ padding: 20 }} />
-          ) : recentTasks.length === 0 ? (
-            <Text style={styles.emptyText}>No tasks assigned</Text>
-          ) : (
-            recentTasks.map((task, i) => (
-              <View key={task._id ?? i}>
-                <View style={styles.taskRow}>
-                  <View style={{ flex: 1, marginRight: 8 }}>
-                    <Text style={styles.taskTitle} numberOfLines={1}>
-                      {task.title}
-                    </Text>
-                    {task.deadline && (
-                      <Text style={styles.taskMeta}>
-                        Due {new Date(task.deadline).toLocaleDateString('en-US', {
-                          month: 'short', day: 'numeric'
-                        })}
-                      </Text>
-                    )}
-                  </View>
-                  <Badge status={task.status} />
-                </View>
-                {i < recentTasks.length - 1 && <View style={styles.divider} />}
-              </View>
-            ))
-          )}
-        </View>
-
-        {/* ── Active Projects ── */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>ACTIVE PROJECTS</Text>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Projects')}
-            style={styles.viewAllBtn}>
-            <Text style={styles.viewAllText}>VIEW ALL</Text>
-            <ChevronRight size={14} color="#2573e6" strokeWidth={2} />
+      {/* Open Tasks */}
+      <View className={`border rounded-lg mb-6 ${bgCard} ${borderColor}`}>
+        <View className={`flex-row justify-between items-center px-4 py-3 border-b ${borderColor}`}>
+          <View className="flex-row items-center"><ClipboardList size={16} color="#47c8ff" /><Text className={`text-[10px] tracking-widest uppercase font-bold ml-2 ${textMuted}`}>Open Tasks</Text></View>
+          <TouchableOpacity onPress={() => navigateTo('Tasks')} className="flex-row items-center">
+            <Text className={`text-[10px] tracking-widest uppercase mr-1 ${textMuted}`}>View All</Text>
+            <ArrowRight size={12} color={isDarkMode ? '#888' : '#555'} />
           </TouchableOpacity>
         </View>
+        {openTasks.length === 0 ? (
+          <View className="flex-row items-center justify-center py-6">
+            <CheckCircle2 size={16} color="#47ff8a" />
+            <Text className="text-[#47ff8a] text-[10px] tracking-widest uppercase font-bold ml-2">ALL CLEAR!</Text>
+          </View>
+        ) : openTasks.slice(0, 5).map((t, idx) => (
+          <View key={t._id || idx} className={`flex-row justify-between items-center px-4 py-3 ${idx !== 0 ? `border-t ${borderColor}` : ''}`}>
+            <View className="flex-1 mr-2">
+              <Text className={`text-xs font-bold ${textColor}`} numberOfLines={1}>{t.title}</Text>
+              <Text className={`text-[10px] mt-0.5 ${textMuted}`}>{t.contributors?.length || 0} assignees</Text>
+            </View>
+            <View className={`border px-2 py-0.5 rounded ${t.priority==='HIGH'?'border-[#ff47474d] bg-[#ff47471a]':t.priority==='MEDIUM'?'border-[#47c8ff4d] bg-[#47c8ff1a]':'border-[#88888833] bg-[#8888881a]'}`}>
+              <Text className={`text-[10px] uppercase font-bold tracking-widest ${t.priority==='HIGH'?'text-[#ff4747]':t.priority==='MEDIUM'?'text-[#47c8ff]':'text-[#888]'}`}>{t.status?.replace('_',' ')||'PENDING'}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
 
-        <View style={styles.card}>
-          {loading ? (
-            <ActivityIndicator color="#2573e6" style={{ padding: 20 }} />
-          ) : activeProjects.length === 0 ? (
-            <Text style={styles.emptyText}>No active projects</Text>
-          ) : (
-            activeProjects.map((project, i) => (
-              <View key={project._id ?? i}>
-                <View style={styles.projectRow}>
-                  <View style={[styles.projectDot, { backgroundColor: '#2573e6' }]} />
-                  <View style={{ flex: 1, marginLeft: 10 }}>
-                    <Text style={styles.projectName} numberOfLines={1}>
-                      {project.name}
-                    </Text>
-                    {project.endDate && (
-                      <Text style={styles.taskMeta}>
-                        Due {new Date(project.endDate).toLocaleDateString('en-US', {
-                          month: 'short', day: 'numeric', year: 'numeric'
-                        })}
-                      </Text>
-                    )}
-                  </View>
-                  <Badge status={project.status ?? 'ACTIVE'} />
-                </View>
-                {i < activeProjects.length - 1 && <View style={styles.divider} />}
-              </View>
-            ))
-          )}
+      {/* Pending Leave Approvals */}
+      <View className={`border rounded-lg mb-6 ${bgCard} ${borderColor}`}>
+        <View className={`flex-row justify-between items-center px-4 py-3 border-b ${borderColor}`}>
+          <View className="flex-row items-center"><Umbrella size={16} color="#e8a847" /><Text className={`text-[10px] tracking-widest uppercase font-bold ml-2 ${textMuted}`}>Leave Requests</Text></View>
+          <TouchableOpacity onPress={() => navigateTo('LeaveApprovals')} className="flex-row items-center">
+            <Text className={`text-[10px] tracking-widest uppercase mr-1 ${textMuted}`}>Review</Text>
+            <ArrowRight size={12} color={isDarkMode ? '#888' : '#555'} />
+          </TouchableOpacity>
         </View>
+        {pendingLeaves.length === 0 ? (
+          <Text className={`text-[10px] tracking-widest uppercase text-center py-6 ${textMuted}`}>No pending leaves</Text>
+        ) : pendingLeaves.slice(0, 4).map((l, idx) => (
+          <View key={l._id || idx} className={`flex-row justify-between items-center px-4 py-3 ${idx !== 0 ? `border-t ${borderColor}` : ''}`}>
+            <View className="flex-1 mr-2">
+              <Text className={`text-xs font-bold ${textColor}`} numberOfLines={1}>{l.userId?.name || l.employeeName || 'Employee'}</Text>
+              <Text className={`text-[10px] mt-0.5 ${textMuted}`}>{l.leaveType || 'Leave'} • {l.startDate ? new Date(l.startDate).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—'}</Text>
+            </View>
+            <View className="border px-2 py-0.5 rounded border-[#e8a8474d] bg-[#e8a8471a]">
+              <Text className="text-[10px] uppercase font-bold tracking-widest text-[#e8a847]">PENDING</Text>
+            </View>
+          </View>
+        ))}
+      </View>
 
-        <View style={{ height: 32 }} />
-      </ScrollView>
-    </SafeAreaView>
+      {/* Open Issues */}
+      <View className={`border rounded-lg mb-6 ${bgCard} ${borderColor}`}>
+        <View className={`flex-row justify-between items-center px-4 py-3 border-b ${borderColor}`}>
+          <View className="flex-row items-center"><Bug size={16} color="#ff4747" /><Text className={`text-[10px] tracking-widest uppercase font-bold ml-2 ${textMuted}`}>Open Issues</Text></View>
+          <TouchableOpacity onPress={() => navigateTo('Issues')} className="flex-row items-center">
+            <Text className={`text-[10px] tracking-widest uppercase mr-1 ${textMuted}`}>View All</Text>
+            <ArrowRight size={12} color={isDarkMode ? '#888' : '#555'} />
+          </TouchableOpacity>
+        </View>
+        {openBugs.length === 0 ? (
+          <View className="flex-row items-center justify-center py-6">
+            <CheckCircle2 size={16} color="#47ff8a" />
+            <Text className="text-[#47ff8a] text-[10px] tracking-widest uppercase font-bold ml-2">NO ISSUES!</Text>
+          </View>
+        ) : openBugs.slice(0, 4).map((b, idx) => (
+          <View key={b._id || idx} className={`flex-row justify-between items-center px-4 py-3 ${idx !== 0 ? `border-t ${borderColor}` : ''}`}>
+            <View className="flex-1 mr-2">
+              <Text className={`text-xs font-bold ${textColor}`} numberOfLines={1}>{b.title}</Text>
+              <Text className={`text-[10px] mt-0.5 ${textMuted}`}>{b.projectId?.name || 'Project'}</Text>
+            </View>
+            <View className={`border px-2 py-0.5 rounded ${b.severity==='CRITICAL'?'border-[#ff47474d] bg-[#ff47471a]':b.severity==='HIGH'?'border-[#e8a8474d] bg-[#e8a8471a]':'border-[#88888833] bg-[#8888881a]'}`}>
+              <Text className={`text-[10px] uppercase font-bold tracking-widest ${b.severity==='CRITICAL'?'text-[#ff4747]':b.severity==='HIGH'?'text-[#e8a847]':'text-[#888]'}`}>{b.severity||'MEDIUM'}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      <View className="h-6" />
+    </ScrollView>
   );
 }
-
-// ── Styles ─────────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#f6f7f9' },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(15,23,42,0.1)',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-  },
-  menuBtn: {
-    padding: 4,
-  },
-  greeting: {
-    fontSize: 11,
-    color: '#6b7280',
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-  name: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0f172a',
-    letterSpacing: -0.3,
-  },
-  namePrimary: { color: '#2573e6' },
-  roleChip: {
-    backgroundColor: '#dbeafe',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  roleText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#2563eb',
-    letterSpacing: 1,
-  },
-
-  scroll: { flex: 1 },
-  scrollContent: { padding: 16, gap: 4 },
-
-  sectionTitle: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#6b7280',
-    letterSpacing: 1.5,
-    marginTop: 16,
-    marginBottom: 10,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 16,
-    marginBottom: 10,
-  },
-  viewAllBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  viewAllText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#2573e6',
-    letterSpacing: 0.8,
-  },
-
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  statCard: {
-    width: '47.5%',
-    backgroundColor: '#ffffff',
-    borderRadius: 10,
-    padding: 14,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-  },
-  statTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  statLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#9ca3af',
-    letterSpacing: 1,
-  },
-  statValue: {
-    fontSize: 28,
-    fontWeight: '800',
-    marginTop: 6,
-    letterSpacing: -0.5,
-  },
-
-  card: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    overflow: 'hidden',
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-  },
-
-  taskRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-  },
-  taskTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#0f172a',
-  },
-  taskMeta: {
-    fontSize: 11,
-    color: '#9ca3af',
-    marginTop: 2,
-  },
-
-  projectRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-  },
-  projectDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-  },
-  projectName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#0f172a',
-  },
-
-  divider: {
-    height: 1,
-    backgroundColor: 'rgba(15,23,42,0.06)',
-    marginHorizontal: 16,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#9ca3af',
-    fontSize: 13,
-    padding: 24,
-  },
-
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 20,
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-});

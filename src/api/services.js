@@ -48,7 +48,7 @@ export async function getAllBugs(params = {}) {
   return data?.bugs ?? data?.data ?? (Array.isArray(data) ? data : []);
 }
 export async function getBugsReportedByMe() {
-  const { data } = await client.get('/bugs', { params: { reportedByMe: true } });
+  const { data } = await client.get('/bugs/reported-by-me');
   return data?.bugs ?? data?.data ?? (Array.isArray(data) ? data : []);
 }
 export async function createBug(payload) {
@@ -117,11 +117,12 @@ export async function reviewLeave(id, action, approverRemarks = '') {
 // ─── Expenses ─────────────────────────────────────────────────
 export async function getMyExpenses(params = {}) {
   const { data } = await client.get('/expenses/my', { params });
-  return data;
+  // Backend returns { records: [...], pagination: {...} }
+  return data?.records ?? data?.expenses ?? (Array.isArray(data) ? data : []);
 }
 export async function getAllExpenses(params = {}) {
   const { data } = await client.get('/expenses/all', { params });
-  return data;
+  return data?.records ?? data?.expenses ?? (Array.isArray(data) ? data : []);
 }
 export async function submitExpense(payload) {
   const { data } = await client.post('/expenses', payload);
@@ -135,13 +136,15 @@ export async function reviewExpense(id, payload) {
 // ─── Leaderboard ──────────────────────────────────────────────
 export async function getLeaderboard(period = 'all') {
   const { data } = await client.get('/leaderboard', { params: { period } });
-  return data;
+  // Backend returns { data: [...], departmentAverage: number }
+  return { data: data?.data ?? [], departmentAverage: data?.departmentAverage ?? 0 };
 }
 
 // ─── Daily Logs ───────────────────────────────────────────────
 export async function getAllLogs(params = {}) {
   const { data } = await client.get('/daily-logs', { params });
-  return data?.logs ?? data?.data ?? (Array.isArray(data) ? data : []);
+  // Backend returns { data: [...], pagination: {...} }
+  return data?.data ?? data?.logs ?? (Array.isArray(data) ? data : []);
 }
 
 // ─── KT Documents ─────────────────────────────────────────────
@@ -174,7 +177,8 @@ export async function deleteReport(id) {
 // ─── Notifications ────────────────────────────────────────────
 export async function getNotifications(params = {}) {
   const { data } = await client.get('/notifications', { params });
-  return data;
+  // Backend returns { notifications: [...], unreadCount, total, page, pages }
+  return { notifications: data?.notifications ?? [], unreadCount: data?.unreadCount ?? 0, total: data?.total ?? 0 };
 }
 export async function markAsRead(id) {
   const { data } = await client.patch(`/notifications/${id}/read`);
