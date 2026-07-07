@@ -19,7 +19,7 @@ import {
   Menu,
 } from 'lucide-react-native';
 import useAuthStore from '../../store/authStore';
-import client from '../../api/client';
+import { getMyProjects, getTasks } from '../../api/services';
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
 function StatCard({ label, value, color, Icon, loading }) {

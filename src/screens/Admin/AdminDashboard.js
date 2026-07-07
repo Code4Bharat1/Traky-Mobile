@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, RefreshControl } from 'react-native';
-import client from '../../api/client';
+import { getProjects, getDepartments, getAllBugs, getTasks, getActivityLogs, getLeaderboard, getAllExpenses } from '../../api/services';
 import { FolderKanban, ArrowRight, Building2, Trophy, Bug, CheckCircle2, ClipboardList, Shield, AlertCircle, Circle, Clock, Users, CreditCard } from 'lucide-react-native';
 import useAuthStore from '../../store/authStore';
 import useThemeStore from '../../store/themeStore';
@@ -26,19 +26,6 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-const extractArray = (res, ...keys) => {
-  if (res.status !== "fulfilled") return [];
-  const d = res.value?.data;
-  if (!d) return [];
-  if (Array.isArray(d)) return d;
-  for (const key of keys) {
-    if (Array.isArray(d[key])) return d[key];
-  }
-  if (Array.isArray(d.data)) return d.data;
-  if (Array.isArray(d.records)) return d.records;
-  return [];
-};
-
 export default function AdminDashboard({ navigation }) {
   const { user } = useAuthStore();
   const { isDarkMode } = useThemeStore();
@@ -53,23 +40,25 @@ export default function AdminDashboard({ navigation }) {
       setLoading(true);
       setError(null);
       const [pR, dR, bR, tR, lR, lbR, exR] = await Promise.allSettled([
-        client.get('/projects?limit=100'),
-        client.get('/departments'),
-        client.get('/bugs'),
-        client.get('/tasks'),
-        client.get('/activity-logs?limit=50'),
-        client.get('/leaderboard?period=all'),
-        client.get('/expenses?status=approved&limit=100')
+        getProjects({ limit: 100 }),
+        getDepartments(),
+        getAllBugs(),
+        getTasks(),
+        getActivityLogs({ limit: 50 }),
+        getLeaderboard('all'),
+        getAllExpenses({ status: 'approved', limit: 100 })
       ]);
 
+      const safe = (r) => r.status === 'fulfilled' ? r.value : [];
+
       setData({
-        projects: extractArray(pR, 'projects'),
-        depts: extractArray(dR, 'allDepartments', 'departments'),
-        bugs: extractArray(bR, 'bugs'),
-        tasks: extractArray(tR, 'tasks'),
-        logs: extractArray(lR, 'activityLogs', 'logs'),
-        leaderboard: extractArray(lbR, 'topOverall', 'leaderboard'),
-        approvedExpenses: extractArray(exR, 'records', 'expenses')
+        projects: Array.isArray(safe(pR)) ? safe(pR) : [],
+        depts: Array.isArray(safe(dR)) ? safe(dR) : [],
+        bugs: Array.isArray(safe(bR)) ? safe(bR) : [],
+        tasks: Array.isArray(safe(tR)) ? safe(tR) : [],
+        logs: (() => { const v = safe(lR); return v?.activityLogs ?? v?.logs ?? (Array.isArray(v) ? v : []); })(),
+        leaderboard: (() => { const v = safe(lbR); return v?.topOverall ?? v?.leaderboard ?? (Array.isArray(v) ? v : []); })(),
+        approvedExpenses: (() => { const v = safe(exR); return v?.records ?? v?.expenses ?? (Array.isArray(v) ? v : []); })()
       });
     } catch (e) {
       setError("Could not load dashboard data.");

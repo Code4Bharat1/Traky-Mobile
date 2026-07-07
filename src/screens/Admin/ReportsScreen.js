@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, FlatList, TextInput, TouchableOpacity, Modal } from 'react-native';
-import client from '../../api/client';
+import { getReports } from '../../api/services';
 import { Search, ChevronDown } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 

@@ -4,7 +4,7 @@ import { Search, Filter, Eye, Download, CheckCircle2, X, Mail } from 'lucide-rea
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
-import client from '../../api/client';
+import { createReport, getTasks } from '../../api/services';
 import useThemeStore from '../../store/themeStore';
 
 export default function EmployeeReportScreen() {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Modal, TextInput, Alert, ScrollView } from 'react-native';
-import client from '../../api/client';
+import { createBranch, deleteBranch, getBranchStats, getBranches, updateBranch } from '../../api/services';
 import { GitBranch, MapPin, Plus, Edit2, Trash2, X, Phone, Mail, CheckCircle, XCircle, Search, ChevronDown, Users, Building2, Circle, CheckCircle2 } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 import useBranchStore from '../../store/branchStore';
@@ -27,13 +27,13 @@ export default function BranchesScreen() {
     try {
       setLoading(true);
       const [bRes, sRes] = await Promise.allSettled([
-        client.get('/branches'),
-        client.get('/branches/stats')
+        getBranches(),
+        getBranchStats()
       ]);
-      const fetchedBranches = bRes.status === 'fulfilled' ? (bRes.value.data?.data || bRes.value.data || []) : [];
+      const fetchedBranches = bRes.status === 'fulfilled' ? (bRes.value?.branches || bRes.value || []) : [];
       setBranches(fetchedBranches);
       if (sRes.status === 'fulfilled') {
-        setStatsData(sRes.value.data?.data || sRes.value.data || { totalEmployees: 0 });
+        setStatsData(sRes.value || { totalEmployees: 0 });
       }
       initBranch(fetchedBranches);
     } catch (error) {
@@ -96,9 +96,9 @@ export default function BranchesScreen() {
       };
 
       if (editingBranch) {
-        await client.patch(`/branches/${editingBranch._id}`, payload);
+        await updateBranch(editingBranch._id, payload);
       } else {
-        await client.post('/branches', payload);
+        await createBranch(payload);
       }
       setModalVisible(false);
       fetchBranches();
@@ -115,7 +115,7 @@ export default function BranchesScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: async () => {
           try {
-            await client.delete(`/branches/${id}`);
+            await deleteBranch(id);
             fetchBranches();
           } catch (e) {
             Alert.alert('Error', 'Failed to delete branch');

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import client from '../../api/client';
+import { clearAllNotifications, deleteNotification, getNotifications, markAsRead } from '../../api/services';
 import { Bell, Clock, CheckCircle, Trash2, RefreshCcw } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 

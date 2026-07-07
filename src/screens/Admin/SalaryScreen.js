@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, ScrollView, TextInput, Modal, Alert } from 'react-native';
-import client from '../../api/client';
+import { calculateAllSalaries, generatePayslip, getConversionSetting, getDepartments, getSalaryList, getSalaryStats, updateConversionSetting, updatePaymentStatus } from '../../api/services';
 import { User, Filter, Search, ChevronDown, Calculator, Settings, Eye, CreditCard, Receipt, Calendar, Clock, X, FileText } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 

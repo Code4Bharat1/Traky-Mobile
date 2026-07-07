@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, Switch, Alert } from 'react-native';
-import client from '../../api/client';
+import { getRolePermissions, updateRolePermissions } from '../../api/services';
 import { Shield, ChevronDown, ChevronRight, Save, Users, FolderKanban, CheckSquare, FileText, Bug, BarChart2, BookOpen, Trophy, Activity, Calendar, Umbrella, CreditCard, DollarSign, Building, Tag, Copy, RotateCcw } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 

@@ -18,7 +18,7 @@ function resolveBaseUrl() {
   if (Platform.OS === 'android') {
     return 'http://10.0.2.2:5000/api/v1'; // Default for Android Emulator
   }
-  return 'http://192.168.2.118:5000/api/v1'; // Hardcoded for physical device testing
+  return 'http://localhost:5000/api/v1'; // Default for iOS Simulator and Web
 }
 
 const BASE_URL = resolveBaseUrl();

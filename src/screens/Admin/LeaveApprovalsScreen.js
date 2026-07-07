@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native';
-import client from '../../api/client';
+import { getAllLeaves } from '../../api/services';
 import { CalendarCheck, User, Clock, Check, X } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 

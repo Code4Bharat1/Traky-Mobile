@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Image, Alert } from 'react-native';
-import client from '../../api/client';
+import { getLeaderboard, recalculateLeaderboard } from '../../api/services';
 import { Trophy, Medal, Award, User, RefreshCw, BarChart2, TrendingUp, CheckCircle, Clock, Users } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 
@@ -30,15 +30,8 @@ export default function LeaderboardScreen() {
       };
       const period = periodMap[filterTab] || 'all';
       
-      // The backend does not support pagination for this endpoint, so we fetch all at once
-      let endpoint = `/leaderboard?period=${period}`;
-      if (activeTab === 'TEAM') {
-        // We'd need projectId here if we fully supported team, but for now fallback to company if we don't have it
-        // To be safe, just use /leaderboard
-      }
-
-      const response = await client.get(endpoint);
-      const newData = response.data?.data || response.data?.leaderboard || response.data || [];
+      const response = await getLeaderboard(period);
+      const newData = response?.data || response?.leaderboard || response || [];
       
       setLeaders(Array.isArray(newData) ? newData : []);
     } catch (error) {
@@ -63,7 +56,7 @@ export default function LeaderboardScreen() {
       { text: "Cancel", style: "cancel" },
       { text: "Recalculate", onPress: async () => {
           try {
-            await client.post('/leaderboard/recalculate');
+            await recalculateLeaderboard();
             handleRefresh();
           } catch (e) {
             handleRefresh(); // refetch anyway

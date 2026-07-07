@@ -2,10 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Modal, Alert, FlatList, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ListTodo, Plus, Search, X, Check, AlertCircle, Calendar, MessageSquare, Send, FileText, ChevronDown } from 'lucide-react-native';
-import { getTasks, getUsers, getProjects, createTask, updateTask, deleteTask } from '../../api/services';
+import { getTasks, getUsers, getProjects, createTask, updateTask, deleteTask, getTaskById, addTaskNote } from '../../api/services';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
-import client from '../../api/client';
 
 const STATUS_META = {
   TODO:        { label: 'Pending',     color: '#f59e0b' },
@@ -223,10 +222,9 @@ export default function TasksScreen({ navigation }) {
     if (!noteText.trim() || !detailTask) return;
     setAddingNote(true);
     try {
-      await client.post(`/tasks/${detailTask._id}/notes`, { text: noteText, authorName: user?.name || 'Dept Head' });
+      await addTaskNote(detailTask._id, noteText, user?.name || 'Dept Head');
       setNoteText('');
-      const res = await client.get(`/tasks/${detailTask._id}`);
-      const updated = res.data?.task || res.data;
+      const updated = await getTaskById(detailTask._id);
       setDetailTask(updated);
       setTasks(prev => prev.map(t => t._id === updated._id ? updated : t));
     } catch { Alert.alert('Error', 'Failed to add note.'); }

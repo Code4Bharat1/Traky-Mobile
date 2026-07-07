@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, RefreshControl } from 'react-native';
-import client from '../../api/client';
+import { getAllBugs, getAllLogs, getMyProjects, getTasks } from '../../api/services';
 import { FolderKanban, ArrowRight, CheckSquare, Bug, ClipboardList, AlertCircle, Circle, Clock, CheckCircle2, User, Trophy } from 'lucide-react-native';
 import useAuthStore from '../../store/authStore';
 import useThemeStore from '../../store/themeStore';

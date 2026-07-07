@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
-import client from '../../api/client';
+import { createCategory, deleteCategory, getCategories, updateCategory } from '../../api/services';
 import { Tags, Plus, Edit2, Trash2, X, FolderKanban } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 

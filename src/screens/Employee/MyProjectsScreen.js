@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Modal, TextInput, Alert, ScrollView } from 'react-native';
-import client from '../../api/client';
+import { createProject, getMyProjects, getTasks } from '../../api/services';
 import { FolderKanban, Plus, Clock, Users, X, ChevronDown, CheckCircle, Search, LayoutGrid, List, ArrowLeft } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';

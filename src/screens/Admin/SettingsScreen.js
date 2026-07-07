@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform, Modal, Image } from 'react-native';
-import client from '../../api/client';
+import { getCompanyById, updateCompany, updateMe, getMe, uploadProfilePic } from '../../api/services';
 import { Settings, Save, User, Building, Clock, Trophy, Globe, Edit2, X, Camera } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import useThemeStore from '../../store/themeStore';
@@ -21,15 +21,13 @@ export default function SettingsScreen() {
 
   const fetchData = async () => {
     try {
-      const meResponse = await client.get('/users/me');
-      const user = meResponse.data?.user || meResponse.data?.data || {};
+      const user = await getMe();
       setProfile(user);
       
       const companyId = user.companyId?._id || user.companyId;
       if (!companyId) throw new Error("No companyId found");
       
-      const response = await client.get(`/companies/${companyId}`);
-      const companyData = response.data.company || response.data.data || response.data || {};
+      const companyData = await getCompanyById(companyId);
       
       // Ensure nested objects exist to prevent crashes during edits
       if (!companyData.scoringRules) companyData.scoringRules = {};
@@ -53,7 +51,7 @@ export default function SettingsScreen() {
     setSaving(true);
     try {
       const compId = profile?.companyId?._id || profile?.companyId;
-      await client.patch(`/companies/${compId}`, settings);
+      await updateCompany(compId, settings);
       Alert.alert("Success", "Company settings updated successfully!");
     } catch (error) {
       console.error("Failed to save settings", error);
@@ -79,7 +77,7 @@ export default function SettingsScreen() {
     try {
       const payload = { name: profileForm.name };
       
-      await client.patch('/users/me', payload);
+      await updateMe(payload);
       setProfileModalVisible(false);
       Alert.alert('Success', 'Profile updated successfully');
       fetchData(); // refresh profile data
@@ -108,15 +106,13 @@ export default function SettingsScreen() {
     setSavingProfile(true);
     try {
       const formData = new FormData();
-      formData.append('avatar', {
+      formData.append('profilePic', {
         uri: asset.uri,
         name: 'avatar.jpg',
         type: 'image/jpeg'
       });
       
-      await client.patch('/users/me', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      await uploadProfilePic(profile._id, formData);
       
       Alert.alert('Success', 'Profile photo updated successfully');
       fetchData();

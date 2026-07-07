@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, LayoutAnimation, UIManager, Platform, ScrollView, TextInput, Modal } from 'react-native';
-import client from '../../api/client';
+import { getUsers, getActivityLogs } from '../../api/services';
 import { Activity, Clock, RefreshCw, ChevronDown, ChevronUp, Search, User, Layers } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 
@@ -43,8 +43,8 @@ export default function ActivityLogs() {
 
   const fetchUsers = async () => {
     try {
-      const res = await client.get('/users?limit=500');
-      setUsers(res.data.data || []);
+      const data = await getUsers({ limit: 500 });
+      setUsers(data || []);
     } catch (err) {
       console.error("Failed to fetch users", err);
     }
@@ -53,15 +53,16 @@ export default function ActivityLogs() {
   const fetchLogs = async (currentPage = 1, isRefresh = false, isPagination = false) => {
     if (!isRefresh && !isPagination) setLoading(true);
     try {
-      let url = `/activity-logs?page=${currentPage}&limit=${limit}`;
-      if (selectedUserId) url += `&userId=${selectedUserId}`;
-      if (selectedEntity) url += `&entity=${selectedEntity}`;
-
-      const response = await client.get(url);
-      const data = response.data.data || [];
+      const response = await getActivityLogs({
+        page: currentPage,
+        limit,
+        userId: selectedUserId || undefined,
+        entity: selectedEntity || undefined
+      });
+      const data = response?.data || response?.logs || response?.activityLogs || (Array.isArray(response) ? response : []);
       setLogs(data);
       
-      const pages = response.data.pagination?.pages || 1;
+      const pages = response?.pagination?.pages || 1;
       setTotalPages(pages);
       setPage(currentPage);
     } catch (error) {

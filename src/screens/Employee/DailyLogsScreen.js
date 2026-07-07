@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Modal, ScrollView, Alert, Platform, KeyboardAvoidingView } from 'react-native';
-import client from '../../api/client';
+import { createDailyLog, getAllLogs, getMyProjects, getTasks, getTodayLog } from '../../api/services';
 import { ClipboardList, Clock, Plus, Folder, CheckSquare, X, Calendar, AlertCircle, ChevronDown, Trash2 } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 import DateTimePicker from '@react-native-community/datetimepicker';

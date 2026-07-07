@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Modal, TextInput, Alert, ScrollView } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import client from '../../api/client';
+import { applyLeave, cancelLeave, getMyLeaves } from '../../api/services';
 import { Umbrella, Plus, X, ChevronDown, CheckCircle, Clock, Calendar, Check, AlertCircle, Paperclip } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 

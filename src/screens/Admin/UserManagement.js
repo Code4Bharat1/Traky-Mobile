@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Modal, Alert, ScrollView, Switch } from 'react-native';
-import client from '../../api/client';
+import { createUser, deleteUser, getBranches, getDepartments, getUsers, updateUser, updateUserPermissions } from '../../api/services';
 import { Search, User, Edit2, Trash2, Plus, X, ChevronDown, CheckCircle, Shield } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, ScrollView, Modal, TextInput, Alert } from 'react-native';
-import client from '../../api/client';
+import { getMyExpenses, submitExpense } from '../../api/services';
 import { CreditCard, Plus, X, ChevronDown, CheckCircle, Calendar, Paperclip } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 import DateTimePicker from '@react-native-community/datetimepicker';

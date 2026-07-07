@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
-import client from '../../api/client';
+import { getAttendanceSummary, getMyAttendance, getTodayAttendance, punchIn, punchOut } from '../../api/services';
 import { CalendarCheck, Clock, MapPin, CheckCircle2, LogOut, Camera, Award, ChevronLeft, ChevronRight, CheckCircle, XCircle, TrendingUp } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 import * as Location from 'expo-location';
@@ -24,13 +24,13 @@ export default function AttendanceScreen() {
       const month = currentMonth.getMonth() + 1;
       const year = currentMonth.getFullYear();
       const [todayRes, historyRes, summaryRes] = await Promise.all([
-        client.get('/attendance/today'),
-        client.get('/attendance/my-records?limit=10'),
-        client.get('/attendance/summary', { params: { month, year } })
+        getTodayAttendance(),
+        getMyAttendance({ limit: 10 }),
+        getAttendanceSummary(month, year)
       ]);
-      setTodayAttendance(todayRes.data?.attendance || null);
-      setHistory(historyRes.data?.data || historyRes.data?.records || []);
-      setSummary(summaryRes.data);
+      setTodayAttendance(todayRes);
+      setHistory(historyRes?.records || []);
+      setSummary(summaryRes);
     } catch (err) {
       console.error(err);
     } finally {
@@ -123,15 +123,11 @@ export default function AttendanceScreen() {
         type: typeStr
       });
 
-      const endpoint = type === 'in' ? '/attendance/punch-in' : '/attendance/punch-out';
-      
-      await client.post(endpoint, formData, {
-        transformRequest: (data, headers) => {
-          // Remove default application/json header to let Axios/XHR set the boundary automatically
-          delete headers['Content-Type'];
-          return data;
-        }
-      });
+      if (type === 'in') {
+        await punchIn(formData);
+      } else {
+        await punchOut(formData);
+      }
       
       Alert.alert('Success', `Punched ${type} successfully!`);
       fetchData();
