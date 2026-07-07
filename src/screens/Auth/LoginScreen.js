@@ -8,11 +8,35 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const { login, isLoading, error } = useAuthStore();
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [localError, setLocalError] = useState('');
+  
+  const { login, changePassword, cancelPasswordChange, requirePasswordChange, isLoading, error } = useAuthStore();
 
   const handleLogin = async () => {
     if (!email || !password) return;
     await login(email, password);
+  };
+
+  const handleChangePassword = async () => {
+    setLocalError('');
+    if (newPassword.length < 6) {
+      setLocalError('Password must be at least 6 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setLocalError('Passwords do not match.');
+      return;
+    }
+    try {
+      await changePassword(newPassword);
+      setPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (e) {
+      // Error handled by store
+    }
   };
 
   return (
@@ -44,101 +68,168 @@ export default function LoginScreen() {
         {/* Login Card */}
         <View className="w-full bg-[#1c1b1b] rounded-md p-6 border border-[#ffffff1a]">
           
-          <Text className="text-white text-2xl font-bold mb-1">Sign In</Text>
-          <Text className="text-[#c2c6d6] text-sm mb-8">
-            Please enter your credentials to access the platform.
-          </Text>
-
-          {error ? (
-            <View className="bg-red-500/10 border border-red-500/20 rounded p-3 mb-6">
-              <Text className="text-red-400 text-sm text-center">{error}</Text>
-            </View>
-          ) : null}
-
-          {/* Email Input */}
-          <View className="mb-6">
-            <Text className="text-[#c2c6d6] text-[10px] font-bold tracking-widest uppercase mb-2">
-              Email Address
-            </Text>
-            <View className="flex-row items-center bg-[#201f1f] border border-[#ffffff33] rounded h-12 px-4">
-              <TextInput 
-                className="flex-1 text-white text-sm"
-                placeholder="name@company.com"
-                placeholderTextColor="#6b7280"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-              <AtSign size={16} color="#c2c6d6" />
-            </View>
-          </View>
-
-          {/* Password Input */}
-          <View className="mb-8">
-            <View className="flex-row justify-between mb-2">
-              <Text className="text-[#c2c6d6] text-[10px] font-bold tracking-widest uppercase">
-                Password
+          {requirePasswordChange ? (
+            <>
+              <Text className="text-white text-2xl font-bold mb-1">Change Password</Text>
+              <Text className="text-[#c2c6d6] text-sm mb-8">
+                For security, please set a new permanent password.
               </Text>
-              <TouchableOpacity>
-                <Text className="text-[#adc6ff] text-[10px] font-bold">Forgot?</Text>
+
+              {(error || localError) ? (
+                <View className="bg-red-500/10 border border-red-500/20 rounded p-3 mb-6">
+                  <Text className="text-red-400 text-sm text-center">{localError || error}</Text>
+                </View>
+              ) : null}
+
+              <View className="mb-6">
+                <Text className="text-[#c2c6d6] text-[10px] font-bold tracking-widest uppercase mb-2">New Password</Text>
+                <View className="flex-row items-center bg-[#201f1f] border border-[#ffffff33] rounded h-12 px-4">
+                  <TextInput 
+                    className="flex-1 text-white text-sm"
+                    placeholder="••••••••"
+                    placeholderTextColor="#6b7280"
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                  />
+                </View>
+              </View>
+
+              <View className="mb-8">
+                <Text className="text-[#c2c6d6] text-[10px] font-bold tracking-widest uppercase mb-2">Confirm Password</Text>
+                <View className="flex-row items-center bg-[#201f1f] border border-[#ffffff33] rounded h-12 px-4">
+                  <TextInput 
+                    className="flex-1 text-white text-sm"
+                    placeholder="••••••••"
+                    placeholderTextColor="#6b7280"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                    {showPassword ? <EyeOff size={16} color="#c2c6d6" /> : <Eye size={16} color="#c2c6d6" />}
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <TouchableOpacity 
+                className="w-full bg-[#adc6ff] h-12 rounded flex-row items-center justify-center opacity-100 disabled:opacity-50 mb-4"
+                onPress={handleChangePassword}
+                disabled={isLoading || !newPassword || !confirmPassword}
+              >
+                {isLoading ? <ActivityIndicator color="#002e6a" /> : <Text className="text-[#002e6a] text-sm font-bold">Update Password</Text>}
               </TouchableOpacity>
-            </View>
-            <View className="flex-row items-center bg-[#201f1f] border border-[#ffffff33] rounded h-12 px-4">
-              <TextInput 
-                className="flex-1 text-white text-sm"
-                placeholder="••••••••"
-                placeholderTextColor="#6b7280"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                {showPassword ? (
-                  <EyeOff size={16} color="#c2c6d6" />
+              
+              <TouchableOpacity 
+                className="w-full h-12 rounded flex-row items-center justify-center"
+                onPress={() => {
+                  setLocalError('');
+                  cancelPasswordChange();
+                }}
+              >
+                <Text className="text-[#c2c6d6] text-sm font-semibold">Cancel</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text className="text-white text-2xl font-bold mb-1">Sign In</Text>
+              <Text className="text-[#c2c6d6] text-sm mb-8">
+                Please enter your credentials to access the platform.
+              </Text>
+
+              {error ? (
+                <View className="bg-red-500/10 border border-red-500/20 rounded p-3 mb-6">
+                  <Text className="text-red-400 text-sm text-center">{error}</Text>
+                </View>
+              ) : null}
+
+              {/* Email Input */}
+              <View className="mb-6">
+                <Text className="text-[#c2c6d6] text-[10px] font-bold tracking-widest uppercase mb-2">
+                  Email Address
+                </Text>
+                <View className="flex-row items-center bg-[#201f1f] border border-[#ffffff33] rounded h-12 px-4">
+                  <TextInput 
+                    className="flex-1 text-white text-sm"
+                    placeholder="name@company.com"
+                    placeholderTextColor="#6b7280"
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                  <AtSign size={16} color="#c2c6d6" />
+                </View>
+              </View>
+
+              {/* Password Input */}
+              <View className="mb-8">
+                <View className="flex-row justify-between mb-2">
+                  <Text className="text-[#c2c6d6] text-[10px] font-bold tracking-widest uppercase">
+                    Password
+                  </Text>
+                  <TouchableOpacity>
+                    <Text className="text-[#adc6ff] text-[10px] font-bold">Forgot?</Text>
+                  </TouchableOpacity>
+                </View>
+                <View className="flex-row items-center bg-[#201f1f] border border-[#ffffff33] rounded h-12 px-4">
+                  <TextInput 
+                    className="flex-1 text-white text-sm"
+                    placeholder="••••••••"
+                    placeholderTextColor="#6b7280"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                    {showPassword ? (
+                      <EyeOff size={16} color="#c2c6d6" />
+                    ) : (
+                      <Eye size={16} color="#c2c6d6" />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Login Button */}
+              <TouchableOpacity 
+                className="w-full bg-[#adc6ff] h-12 rounded flex-row items-center justify-center opacity-100 disabled:opacity-50 mb-8"
+                onPress={handleLogin}
+                disabled={isLoading || !email || !password}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#002e6a" />
                 ) : (
-                  <Eye size={16} color="#c2c6d6" />
+                  <>
+                    <Text className="text-[#002e6a] text-sm font-bold mr-2">Secure Sign In</Text>
+                    <ArrowRight size={16} color="#002e6a" />
+                  </>
                 )}
               </TouchableOpacity>
-            </View>
-          </View>
 
-          {/* Login Button */}
-          <TouchableOpacity 
-            className="w-full bg-[#adc6ff] h-12 rounded flex-row items-center justify-center opacity-100 disabled:opacity-50 mb-8"
-            onPress={handleLogin}
-            disabled={isLoading || !email || !password}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#002e6a" />
-            ) : (
-              <>
-                <Text className="text-[#002e6a] text-sm font-bold mr-2">Secure Sign In</Text>
-                <ArrowRight size={16} color="#002e6a" />
-              </>
-            )}
-          </TouchableOpacity>
+              {/* Divider */}
+              <View className="flex-row items-center mb-6">
+                <View className="flex-1 h-[1px] bg-[#ffffff1a]" />
+                <Text className="text-[#c2c6d6] text-[10px] tracking-widest px-4">OR CONTINUE WITH</Text>
+                <View className="flex-1 h-[1px] bg-[#ffffff1a]" />
+              </View>
 
-          {/* Divider */}
-          <View className="flex-row items-center mb-6">
-            <View className="flex-1 h-[1px] bg-[#ffffff1a]" />
-            <Text className="text-[#c2c6d6] text-[10px] tracking-widest px-4">OR CONTINUE WITH</Text>
-            <View className="flex-1 h-[1px] bg-[#ffffff1a]" />
-          </View>
+              {/* Alternate Login Options */}
+              <TouchableOpacity className="w-full h-12 flex-row items-center justify-center border border-[#ffffff33] rounded mb-3">
+                <Mail size={16} color="#e5e7eb" className="mr-2" />
+                <Text className="text-[#e5e7eb] text-sm font-semibold">Login via OTP</Text>
+              </TouchableOpacity>
 
-          {/* Alternate Login Options */}
-          <TouchableOpacity className="w-full h-12 flex-row items-center justify-center border border-[#ffffff33] rounded mb-3">
-            <Mail size={16} color="#e5e7eb" className="mr-2" />
-            <Text className="text-[#e5e7eb] text-sm font-semibold">Login via OTP</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity className="w-full h-12 flex-row items-center justify-center border border-[#ffffff33] rounded">
-            {/* Using text "G" as placeholder for Google icon */}
-            <Text className="text-[#ea4335] font-bold text-lg mr-2">G</Text>
-            <Text className="text-[#e5e7eb] text-sm font-semibold">Sign-in with Google</Text>
-          </TouchableOpacity>
+              <TouchableOpacity className="w-full h-12 flex-row items-center justify-center border border-[#ffffff33] rounded">
+                <Text className="text-[#ea4335] font-bold text-lg mr-2">G</Text>
+                <Text className="text-[#e5e7eb] text-sm font-semibold">Sign-in with Google</Text>
+              </TouchableOpacity>
+            </>
+          )}
 
         </View>
         

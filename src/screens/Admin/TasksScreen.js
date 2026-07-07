@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Modal, TextInput, Alert, ScrollView } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Modal, TextInput, Alert, ScrollView, Switch } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import client from '../../api/client';
 import { CheckSquare, Plus, Clock, Tag, X, ChevronDown, CheckCircle, Search, MessageSquare, Send, FileText, Calendar, Check } from 'lucide-react-native';
@@ -32,7 +32,13 @@ export default function TasksScreen() {
 
   // Add Task Modal State
   const [addModalVisible, setAddModalVisible] = useState(false);
-  const [formData, setFormData] = useState({ title: '', description: '', priority: 'MEDIUM', status: 'IN_PROGRESS', projectId: '', assigneeIds: [], proofRequired: false, startTime: null, endTime: null });
+  const [formData, setFormData] = useState({ 
+    title: '', description: '', priority: 'MEDIUM', status: 'IN_PROGRESS', projectId: '', 
+    assigneeIds: [], proofRequired: false, startTime: null, endTime: null,
+    parentTaskId: '', points: '0', isRecurring: false, 
+    recurringConfig: { frequency: 'DAILY', interval: '1' }, 
+    checklist: [], reminders: []
+  });
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -117,7 +123,13 @@ export default function TasksScreen() {
   }, [debouncedSearchQuery, filterStatus, filterDept, filterDate]);
 
   const openAddModal = () => {
-    setFormData({ title: '', description: '', priority: 'MEDIUM', status: 'IN_PROGRESS', projectId: '', assigneeIds: [], proofRequired: false, startTime: null, endTime: null });
+    setFormData({ 
+      title: '', description: '', priority: 'MEDIUM', status: 'IN_PROGRESS', projectId: '', 
+      assigneeIds: [], proofRequired: false, startTime: null, endTime: null,
+      parentTaskId: '', points: '0', isRecurring: false, 
+      recurringConfig: { frequency: 'DAILY', interval: '1' }, 
+      checklist: [], reminders: []
+    });
     setAddModalVisible(true);
   };
 
@@ -138,7 +150,7 @@ export default function TasksScreen() {
   };
 
   const handleSave = async () => {
-    if (!formData.title) {
+    if (!formData.title?.trim()) {
       Alert.alert('Error', 'Task Title is required');
       return;
     }
@@ -147,8 +159,17 @@ export default function TasksScreen() {
       const payload = { 
         ...formData, 
         contributors: formData.assigneeIds,
-        proofRequired: formData.proofRequired
+        proofRequired: formData.proofRequired,
+        points: parseInt(formData.points) || 0,
+        isRecurring: formData.isRecurring,
+        recurringConfig: {
+          frequency: formData.recurringConfig?.frequency || 'DAILY',
+          interval: parseInt(formData.recurringConfig?.interval) || 1
+        },
+        checklist: formData.checklist,
+        reminders: formData.reminders
       };
+      if (!payload.parentTaskId) delete payload.parentTaskId;
       // Format dates if available
       if (formData.startTime) payload.startTime = formData.startTime.toISOString();
       if (formData.endTime) payload.endTime = formData.endTime.toISOString();
@@ -233,6 +254,7 @@ export default function TasksScreen() {
     if (dropdownType === 'filterDept') return [{_id: 'ALL', name: 'All Depts'}, ...departments.map(d => ({_id: d._id, name: d.departmentName}))];
     if (dropdownType === 'addPriority') return [{_id: 'LOW', name: 'Low'}, {_id: 'MEDIUM', name: 'Medium'}, {_id: 'HIGH', name: 'High'}];
     if (dropdownType === 'addStatus') return [{_id: 'TODO', name: 'Todo'}, {_id: 'IN_PROGRESS', name: 'In Progress'}, {_id: 'DONE', name: 'Done'}];
+    if (dropdownType === 'frequency') return [{_id: 'DAILY', name: 'Daily'}, {_id: 'WEEKLY', name: 'Weekly'}, {_id: 'MONTHLY', name: 'Monthly'}];
     return [];
   };
 
@@ -242,6 +264,7 @@ export default function TasksScreen() {
     if (dropdownType === 'filterDept') setFilterDept(item._id);
     if (dropdownType === 'addPriority') setFormData({...formData, priority: item._id});
     if (dropdownType === 'addStatus') setFormData({...formData, status: item._id});
+    if (dropdownType === 'frequency') setFormData({...formData, recurringConfig: {...formData.recurringConfig, frequency: item._id}});
     setDropdownVisible(false);
   };
 
@@ -557,6 +580,57 @@ export default function TasksScreen() {
                   />
                </View>
 
+               
+               <View className="mb-4">
+                 <Text className={`text-[10px] font-bold mb-2 uppercase tracking-widest ${textMuted}`}>Advanced Options</Text>
+                 <View className={`border rounded p-4 ${bgInputAlt} ${borderColor}`}>
+                    
+                    <Text className={`text-[10px] font-bold mb-1 uppercase tracking-widest ${textMuted}`}>Task Points</Text>
+                    <TextInput 
+                      value={String(formData.points)} 
+                      onChangeText={v => setFormData({...formData, points: v})} 
+                      keyboardType="numeric"
+                      className={`border rounded p-2 mb-3 text-xs ${bgInput} ${borderColor} ${textColor}`} 
+                    />
+
+                    <Text className={`text-[10px] font-bold mb-1 uppercase tracking-widest ${textMuted}`}>Parent Task ID (Optional)</Text>
+                    <TextInput 
+                      value={formData.parentTaskId} 
+                      onChangeText={v => setFormData({...formData, parentTaskId: v})} 
+                      placeholder="Enter task ID..."
+                      placeholderTextColor={isDarkMode ? "#888" : "#9ca3af"}
+                      className={`border rounded p-2 mb-3 text-xs ${bgInput} ${borderColor} ${textColor}`} 
+                    />
+
+                    <View className="flex-row items-center justify-between mb-3">
+                      <Text className={`text-[10px] font-bold uppercase tracking-widest ${textMuted}`}>Recurring Task</Text>
+                      <Switch value={formData.isRecurring} onValueChange={v => setFormData({...formData, isRecurring: v})} />
+                    </View>
+
+                    {formData.isRecurring && (
+                      <View className="flex-row items-center justify-between mb-3">
+                         <View className="flex-1 mr-2">
+                           <Text className={`text-[10px] font-bold mb-1 uppercase tracking-widest ${textMuted}`}>Frequency</Text>
+                           <TouchableOpacity onPress={() => { setDropdownType('frequency'); setDropdownVisible(true); }} className={`border rounded p-2 text-xs ${bgInput} ${borderColor} flex-row justify-between items-center`}>
+                             <Text className={`text-xs ${textColor}`}>{formData.recurringConfig?.frequency || 'DAILY'}</Text>
+                             <ChevronDown size={14} color={isDarkMode ? "#888" : "#9ca3af"} />
+                           </TouchableOpacity>
+                         </View>
+                         <View className="flex-1 ml-2">
+                           <Text className={`text-[10px] font-bold mb-1 uppercase tracking-widest ${textMuted}`}>Interval</Text>
+                           <TextInput 
+                             value={String(formData.recurringConfig?.interval || '1')} 
+                             onChangeText={v => setFormData({...formData, recurringConfig: {...formData.recurringConfig, interval: v}})} 
+                             keyboardType="numeric"
+                             className={`border rounded p-2 text-xs ${bgInput} ${borderColor} ${textColor}`} 
+                           />
+                         </View>
+                      </View>
+                    )}
+
+                 </View>
+               </View>
+  
                <Text className={`text-[10px] font-bold mb-2 uppercase tracking-widest ${textMuted}`}>Assign Employees</Text>
                <View className={`border rounded mb-4 ${bgInputAlt} ${borderColor}`}>
                   <View className={`flex-row items-center p-3 border-b ${borderColor}`}>
@@ -665,6 +739,26 @@ export default function TasksScreen() {
 
       {/* Search and Filters */}
       <View className="mb-4">
+         {/* Tabs */}
+         <View style={{ height: 40, marginBottom: 12 }}>
+           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ alignItems: 'center' }}>
+             {['ALL', 'PENDING', 'IN_PROGRESS', 'IN_REVIEW', 'COMPLETED', 'REJECTED'].map(tab => {
+               const isActive = filterStatus === tab;
+               return (
+                 <TouchableOpacity 
+                   key={tab}
+                   onPress={() => setFilterStatus(tab)}
+                   className={`px-4 py-2 mr-2 rounded-full ${isActive ? (isDarkMode ? 'bg-[#adc6ff]' : 'bg-[#2573e6]') : (isDarkMode ? 'bg-[#1c1b1b]' : 'bg-gray-200')} ${!isActive ? 'border ' + borderColor : ''}`}
+                 >
+                   <Text className={`text-[10px] font-bold tracking-widest uppercase ${isActive ? (isDarkMode ? 'text-[#131313]' : 'text-white') : textMuted}`}>
+                     {tab === 'ALL' ? 'ALL STATUSES' : tab.replace('_', ' ')}
+                   </Text>
+                 </TouchableOpacity>
+               );
+             })}
+           </ScrollView>
+         </View>
+
          <View className={`flex-row items-center border rounded px-3 h-10 mb-2 ${bgCard} ${borderColor}`}>
             <Search size={16} color={isDarkMode ? "#888" : "#9ca3af"} className="mr-2" />
             <TextInput 
@@ -676,23 +770,19 @@ export default function TasksScreen() {
             />
          </View>
          <View className="flex-row justify-between items-center mb-2">
-            <TouchableOpacity onPress={() => { setDropdownType('filterStatus'); setDropdownVisible(true); }} className={`flex-1 border rounded px-3 h-10 flex-row items-center justify-between mr-2 ${bgCard} ${borderColor}`}>
-              <Text className={`text-[10px] uppercase font-bold tracking-widest ${textColor}`}>{filterStatus === 'ALL' ? 'All Statuses' : filterStatus.replace('_', ' ')}</Text>
-              <ChevronDown size={14} color={isDarkMode ? "#888" : "#9ca3af"} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => { setDropdownType('filterDept'); setDropdownVisible(true); }} className={`flex-1 border rounded px-3 h-10 flex-row items-center justify-between ml-2 ${bgCard} ${borderColor}`}>
+            <TouchableOpacity onPress={() => { setDropdownType('filterDept'); setDropdownVisible(true); }} className={`flex-1 border rounded px-3 h-10 flex-row items-center justify-between mr-2 ${bgCard} ${borderColor}`}>
               <Text className={`text-[10px] uppercase font-bold tracking-widest ${textColor}`}>{filterDept === 'ALL' ? 'All Depts' : departments.find(d => d._id === filterDept)?.departmentName?.substring(0,8) + '..'}</Text>
               <ChevronDown size={14} color={isDarkMode ? "#888" : "#9ca3af"} />
             </TouchableOpacity>
-         </View>
-         <View className="flex-row justify-between items-center mb-2">
-            <TouchableOpacity onPress={() => setShowDatePicker(true)} className={`flex-1 border rounded px-3 h-10 flex-row items-center mr-2 ${bgCard} ${borderColor}`}>
+            <TouchableOpacity onPress={() => setShowDatePicker(true)} className={`flex-1 border rounded px-3 h-10 flex-row items-center ml-2 ${bgCard} ${borderColor}`}>
               <Calendar size={14} color={isDarkMode ? "#888" : "#9ca3af"} className="mr-2" />
               <Text className={`text-[10px] uppercase font-bold tracking-widest ${filterDate ? textColor : textMuted}`}>
                  {filterDate ? filterDate.toLocaleDateString() : 'Filter by date'}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setTimeModalVisible(true)} className={`flex-1 border rounded px-3 h-10 flex-row items-center justify-between ml-2 ${bgCard} ${borderColor}`}>
+         </View>
+         <View className="flex-row justify-between items-center mb-2">
+            <TouchableOpacity onPress={() => setTimeModalVisible(true)} className={`w-full border rounded px-3 h-10 flex-row items-center justify-between ${bgCard} ${borderColor}`}>
               <Text className={`text-[10px] uppercase font-bold tracking-widest ${textColor}`} numberOfLines={1}>Total Time Spent</Text>
               <ChevronDown size={14} color={isDarkMode ? "#888" : "#9ca3af"} />
             </TouchableOpacity>

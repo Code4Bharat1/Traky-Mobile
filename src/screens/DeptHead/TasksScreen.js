@@ -17,13 +17,158 @@ const STATUS_META = {
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH'];
 const STATUSES   = ['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE', 'REJECTED'];
 
-export default function TasksScreen() {
-  const { isDarkMode } = useThemeStore();
-  const { user } = useAuthStore();
-  const [tasks, setTasks]       = useState([]);
-  const [projects, setProjects] = useState([]);
-  const [users, setUsers]       = useState([]);
-  const [loading, setLoading]   = useState(true);
+function StatusBadge({ status }) {
+  const m = STATUS_META[status] || STATUS_META.TODO;
+  return (
+    <View style={[ts.badge, { backgroundColor: m.bg, borderColor: m.color + '50' }]}>
+      <Circle size={6} color={m.color} fill={m.color} />
+      <Text style={[ts.badgeText, { color: m.color }]}>{m.label}</Text>
+    </View>
+  );
+}
+
+function PriorityChip({ priority }) {
+  const m = PRIORITY_META[priority] || PRIORITY_META.LOW;
+  return <Text style={[ts.priorityChip, { color: m.color }]}>{m.label}</Text>;
+}
+
+function fmt(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// ─── Task Modal ────────────────────────────────────────────────
+function TaskModal({ mode, initial, projects, users, onClose, onSave, saving }) {
+  const [form, setForm] = useState(
+    initial
+      ? {
+          title: initial.title,
+          description: initial.description || '',
+          projectId: initial.projectId?._id || initial.projectId || '',
+          priority: initial.priority || 'MEDIUM',
+          status: initial.status || 'IN_PROGRESS',
+          contributors: (initial.contributors || []).map(c => c.userId?._id || c.userId || c),
+        }
+      : { title: '', description: '', projectId: '', priority: 'MEDIUM', status: 'IN_PROGRESS', contributors: [] },
+  );
+  const [err, setErr] = useState('');
+
+  function handleSubmit() {
+    if (!form.title.trim()) { setErr('Task title is required.'); return; }
+    if (!form.contributors.length) { setErr('Please assign at least one employee.'); return; }
+    setErr('');
+    onSave(form);
+  }
+
+  function toggleContributor(id) {
+    setForm(prev => ({
+      ...prev,
+      contributors: prev.contributors.includes(id)
+        ? prev.contributors.filter(c => c !== id)
+        : [...prev.contributors, id],
+    }));
+  }
+
+  const STATUSES = ['IN_PROGRESS', 'TODO', 'IN_REVIEW', 'DONE', 'REJECTED'];
+  const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH'];
+
+  return (
+    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
+      <View style={ts.overlay}>
+        <View style={ts.sheet}>
+          <View style={ts.sheetHeader}>
+            <Text style={ts.sheetTitle}>{mode === 'add' ? 'ASSIGN NEW TASK' : 'EDIT TASK'}</Text>
+            <TouchableOpacity onPress={onClose} disabled={saving}><X size={18} color="#6b7280" /></TouchableOpacity>
+          </View>
+          <ScrollView style={{ padding: 16 }} showsVerticalScrollIndicator={false}>
+            {!!err && <View style={ts.errorBox}><AlertCircle size={12} color="#ff4747" /><Text style={ts.errorText}>{err}</Text></View>}
+
+            <Text style={ts.label}>Task Title *</Text>
+            <TextInput style={ts.input} value={form.title} onChangeText={v => setForm({ ...form, title: v })} placeholder="e.g. Implement Login" placeholderTextColor="#4b5563" />
+
+            <Text style={ts.label}>Description</Text>
+            <TextInput style={[ts.input, ts.textArea]} value={form.description} onChangeText={v => setForm({ ...form, description: v })} placeholder="Task details..." placeholderTextColor="#4b5563" multiline />
+
+            <Text style={ts.label}>Project</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+              <TouchableOpacity onPress={() => setForm({ ...form, projectId: '' })} style={[ts.optChip, !form.projectId && ts.optChipActive]}>
+                <Text style={[ts.optChipText, !form.projectId && ts.optChipTextActive]}>None</Text>
+              </TouchableOpacity>
+              {projects.map(p => (
+                <TouchableOpacity key={p._id} onPress={() => setForm({ ...form, projectId: p._id })} style={[ts.optChip, form.projectId === p._id && ts.optChipActive]}>
+                  <Text style={[ts.optChipText, form.projectId === p._id && ts.optChipTextActive]}>{p.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <Text style={ts.label}>Priority</Text>
+            <View style={ts.row}>
+              {PRIORITIES.map(p => (
+                <TouchableOpacity key={p} onPress={() => setForm({ ...form, priority: p })} style={[ts.optChip, form.priority === p && ts.optChipActive]}>
+                  <Text style={[ts.optChipText, form.priority === p && ts.optChipTextActive]}>{PRIORITY_META[p].label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={ts.label}>Status</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+              {STATUSES.map(st => (
+                <TouchableOpacity key={st} onPress={() => setForm({ ...form, status: st })} style={[ts.optChip, form.status === st && ts.optChipActive]}>
+                  <Text style={[ts.optChipText, form.status === st && ts.optChipTextActive]}>{STATUS_META[st].label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            
+            <Text style={ts.label}>Advanced Options</Text>
+            <View style={{ borderWidth: 1, borderColor: '#374151', borderRadius: 8, padding: 12, marginBottom: 12 }}>
+               <Text style={ts.label}>Task Points</Text>
+               <TextInput style={ts.input} value={String(form.points || '0')} onChangeText={v => setForm({...form, points: v})} keyboardType="numeric" placeholderTextColor="#4b5563" />
+               
+               <Text style={ts.label}>Parent Task ID (Optional)</Text>
+               <TextInput style={ts.input} value={form.parentTaskId || ''} onChangeText={v => setForm({...form, parentTaskId: v})} placeholder="Task ID..." placeholderTextColor="#4b5563" />
+               
+               <View style={[ts.row, { justifyContent: 'space-between', marginBottom: 12 }]}>
+                 <Text style={ts.label}>Recurring Task</Text>
+                 <Switch value={form.isRecurring || false} onValueChange={v => setForm({...form, isRecurring: v})} />
+               </View>
+            </View>
+     
+            <Text style={ts.label}>Assign Employees *</Text>
+            {users.slice(0, 20).map(u => {
+              const selected = form.contributors.includes(u._id);
+              return (
+                <TouchableOpacity key={u._id} onPress={() => toggleContributor(u._id)} style={[ts.userRow, selected && ts.userRowSelected]}>
+                  <View style={[ts.checkbox, selected && ts.checkboxSelected]}>
+                    {selected && <Check size={10} color="#2573e6" />}
+                  </View>
+                  <Text style={[ts.userName, selected && ts.userNameSelected]}>{u.name}</Text>
+                </TouchableOpacity>
+              );
+            })}
+
+            <View style={{ height: 20 }} />
+          </ScrollView>
+          <View style={ts.footer}>
+            <TouchableOpacity style={ts.cancelBtn} onPress={onClose} disabled={saving}>
+              <Text style={ts.cancelText}>CANCEL</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[ts.saveBtn, saving && { opacity: 0.5 }]} onPress={handleSubmit} disabled={saving}>
+              {saving ? <ActivityIndicator size="small" color="#fff" /> : <><Check size={14} color="#fff" /><Text style={ts.saveText}>{mode === 'add' ? 'ASSIGN' : 'SAVE'}</Text></>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ─── Main ─────────────────────────────────────────────────────
+export default function TasksScreen({ navigation }) {
+  const [tasks, setTasks]         = useState([]);
+  const [projects, setProjects]   = useState([]);
+  const [users, setUsers]         = useState([]);
+  const [loading, setLoading]     = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving]     = useState(false);
   const [search, setSearch]     = useState('');

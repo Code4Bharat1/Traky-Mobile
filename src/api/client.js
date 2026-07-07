@@ -16,9 +16,9 @@ function resolveBaseUrl() {
     return process.env.EXPO_PUBLIC_API_URL;
   }
   if (Platform.OS === 'android') {
-    return 'http://192.168.1.185:5000/api/v1'; // Hardcoded for physical device testing
+    return 'http://10.0.2.2:5000/api/v1'; // Default for Android Emulator
   }
-  return 'http://192.168.1.185:5000/api/v1'; // Hardcoded for physical device testing
+  return 'http://192.168.2.118:5000/api/v1'; // Hardcoded for physical device testing
 }
 
 const BASE_URL = resolveBaseUrl();
