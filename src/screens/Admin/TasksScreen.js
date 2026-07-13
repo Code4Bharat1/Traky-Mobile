@@ -35,7 +35,13 @@ export default function TasksScreen() {
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [formData, setFormData] = useState({ 
     title: '', description: '', priority: 'MEDIUM', status: 'IN_PROGRESS', projectId: '', 
-    assigneeIds: [], proofRequired: false, startTime: null, endTime: null,
+    assigneeIds: [], proofRequired: false,
+    proofConfig: {
+      description: { enabled: false, required: false },
+      files: { enabled: false, required: false },
+      images: { enabled: false, required: false, multiple: false }
+    },
+    startTime: null, endTime: null,
     parentTaskId: '', points: '0', isRecurring: false, 
     recurringConfig: { frequency: 'DAILY', interval: '1' }, 
     checklist: [], reminders: []
@@ -126,7 +132,13 @@ export default function TasksScreen() {
   const openAddModal = () => {
     setFormData({ 
       title: '', description: '', priority: 'MEDIUM', status: 'IN_PROGRESS', projectId: '', 
-      assigneeIds: [], proofRequired: false, startTime: null, endTime: null,
+      assigneeIds: [], proofRequired: false,
+      proofConfig: {
+        description: { enabled: false, required: false },
+        files: { enabled: false, required: false },
+        images: { enabled: false, required: false, multiple: false }
+      },
+      startTime: null, endTime: null,
       parentTaskId: '', points: '0', isRecurring: false, 
       recurringConfig: { frequency: 'DAILY', interval: '1' }, 
       checklist: [], reminders: []
@@ -161,6 +173,7 @@ export default function TasksScreen() {
         ...formData, 
         contributors: formData.assigneeIds,
         proofRequired: formData.proofRequired,
+        proofConfig: formData.proofConfig,
         points: parseInt(formData.points) || 0,
         isRecurring: formData.isRecurring,
         recurringConfig: {

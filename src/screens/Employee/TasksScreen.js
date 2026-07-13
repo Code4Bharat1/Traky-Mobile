@@ -37,7 +37,13 @@ export default function TasksScreen() {
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [formData, setFormData] = useState({ 
     title: '', description: '', priority: 'MEDIUM', status: 'IN_PROGRESS', projectId: '', 
-    assigneeIds: [], proofRequired: false, startTime: null, endTime: null,
+    assigneeIds: [], proofRequired: false,
+    proofConfig: {
+      description: { enabled: false, required: false },
+      files: { enabled: false, required: false },
+      images: { enabled: false, required: false, multiple: false }
+    },
+    startTime: null, endTime: null,
     parentTaskId: '', points: '0', isRecurring: false, 
     recurringConfig: { frequency: 'DAILY', interval: '1' }, 
     checklist: [], reminders: []
@@ -140,6 +146,11 @@ export default function TasksScreen() {
       priority: t.priority || 'MEDIUM',
       points: String(t.points || '0'),
       proofRequired: t.proofRequired || false,
+      proofConfig: t.proofConfig || {
+        description: { enabled: false, required: false },
+        files: { enabled: false, required: false },
+        images: { enabled: false, required: false, multiple: false }
+      },
       isRecurring: t.isRecurring || false,
       recurringConfig: t.recurringConfig || { frequency: 'DAILY', interval: '1' },
       checklist: t.checklist || [],
@@ -155,7 +166,13 @@ export default function TasksScreen() {
   const openAddModal = () => {
     setFormData({ 
       title: '', description: '', priority: 'MEDIUM', status: 'IN_PROGRESS', projectId: '', 
-      assigneeIds: [], proofRequired: false, startTime: null, endTime: null,
+      assigneeIds: [], proofRequired: false,
+      proofConfig: {
+        description: { enabled: false, required: false },
+        files: { enabled: false, required: false },
+        images: { enabled: false, required: false, multiple: false }
+      },
+      startTime: null, endTime: null,
       parentTaskId: '', points: '0', isRecurring: false, 
       recurringConfig: { frequency: 'DAILY', interval: '1' }, 
       checklist: [], reminders: []
@@ -189,7 +206,8 @@ export default function TasksScreen() {
       const payload = { 
         ...formData, 
         contributors: formData.assigneeIds,
-        proofRequired: formData.proofRequired
+        proofRequired: formData.proofRequired,
+        proofConfig: formData.proofConfig
       };
       // Format dates if available
       if (formData.startTime) payload.startTime = formData.startTime.toISOString();
