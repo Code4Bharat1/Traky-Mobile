@@ -4,6 +4,8 @@ import { createBug, deleteBug, getAllBugs, getProjects, getUsers, updateBug } fr
 import { AlertCircle, Plus, Clock, Tag, Edit2, Trash2, X, ChevronDown, CheckCircle, Search, Bug, User } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 
+import client from '../../api/client';
+
 export default function IssuesScreen() {
   const { isDarkMode } = useThemeStore();
   const [issues, setIssues] = useState([]);

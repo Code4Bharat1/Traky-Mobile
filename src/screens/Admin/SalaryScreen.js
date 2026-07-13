@@ -4,6 +4,8 @@ import { calculateAllSalaries, generatePayslip, getConversionSetting, getDepartm
 import { User, Filter, Search, ChevronDown, Calculator, Settings, Eye, CreditCard, Receipt, Calendar, Clock, X, FileText } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 
+import client from '../../api/client';
+
 const SalaryCard = React.memo(({ item, isDarkMode, openModal, bgCard, bgInputAlt, borderColor, textColor, textMuted }) => {
   const periodMonthName = item.periodMonth ? new Date(2000, item.periodMonth - 1).toLocaleString('default', { month: 'short' }) : 'N/A';
   const pYear = item.periodYear || 'N/A';

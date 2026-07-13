@@ -4,6 +4,8 @@ import { createDepartment, deleteDepartment, getDepartments, getUsers, updateDep
 import { Building2, Plus, Edit2, Trash2, X, ChevronDown, Search, Users, UserCog } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 
+import client from '../../api/client';
+
 export default function DepartmentsScreen() {
   const { isDarkMode } = useThemeStore();
   const [departments, setDepartments] = useState([]);

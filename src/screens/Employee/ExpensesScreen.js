@@ -6,6 +6,8 @@ import useThemeStore from '../../store/themeStore';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
 
+import client from '../../api/client';
+
 const EXPENSE_CATEGORIES = [
   'Travel', 'Meals', 'Office Supplies', 'Internet', 'Training', 'Other'
 ];

@@ -5,6 +5,8 @@ import { FolderKanban, Plus, Clock, Users, X, ChevronDown, CheckCircle, Search, 
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 
+import client from '../../api/client';
+
 export default function ProjectsScreen() {
   const { isDarkMode } = useThemeStore();
   const { user } = useAuthStore();

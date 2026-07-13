@@ -10,6 +10,7 @@ import {
 } from 'lucide-react-native';
 import useAuthStore from '../../store/authStore';
 import useThemeStore from '../../store/themeStore';
+import client from '../../api/client';
 import { getAllBugs, getAllExpenses, getAllLogs, getColleagues, getLeaveApprovals, getMyProjects, getTasks } from '../../api/services';
 
 // ── Helper: safely extract array from settled promise ───────────────────────

@@ -4,6 +4,7 @@ import { getAllBugs, getAllLogs, getMyProjects, getTasks } from '../../api/servi
 import { FolderKanban, ArrowRight, CheckSquare, Bug, ClipboardList, AlertCircle, Circle, Clock, CheckCircle2, User, Trophy } from 'lucide-react-native';
 import useAuthStore from '../../store/authStore';
 import useThemeStore from '../../store/themeStore';
+import client from '../../api/client';
 
 const STATUS_META = {
   IN_PROGRESS: { label: "In Progress", color: "text-[#47c8ff]", bg: "bg-[#47c8ff1a]", border: "border-[#47c8ff33]" },

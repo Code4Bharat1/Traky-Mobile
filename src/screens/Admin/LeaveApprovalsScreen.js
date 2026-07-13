@@ -4,6 +4,8 @@ import { getAllLeaves } from '../../api/services';
 import { CalendarCheck, User, Clock, Check, X } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 
+import client from '../../api/client';
+
 export default function LeaveApprovalsScreen() {
   const { isDarkMode } = useThemeStore();
   const [leaves, setLeaves] = useState([]);

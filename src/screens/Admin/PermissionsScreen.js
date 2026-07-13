@@ -4,6 +4,8 @@ import { getRolePermissions, updateRolePermissions } from '../../api/services';
 import { Shield, ChevronDown, ChevronRight, Save, Users, FolderKanban, CheckSquare, FileText, Bug, BarChart2, BookOpen, Trophy, Activity, Calendar, Umbrella, CreditCard, DollarSign, Building, Tag, Copy, RotateCcw } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 
+import client from '../../api/client';
+
 export default function PermissionsScreen() {
   const { isDarkMode } = useThemeStore();
   const [permissions, setPermissions] = useState(null);

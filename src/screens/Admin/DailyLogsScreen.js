@@ -4,6 +4,8 @@ import { deleteDailyLog, generateSummary, getAllLogs, getDepartments, getProject
 import { ClipboardList, Clock, User, Search, ChevronDown, CheckCircle, X, Download, Bot, Folder } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 
+import client from '../../api/client';
+
 export default function DailyLogsScreen() {
   const { isDarkMode } = useThemeStore();
   const [logs, setLogs] = useState([]);

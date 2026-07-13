@@ -4,6 +4,8 @@ import { getReports } from '../../api/services';
 import { Search, ChevronDown } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 
+import client from '../../api/client';
+
 export default function ReportsScreen() {
   const { isDarkMode } = useThemeStore();
   const [reports, setReports] = useState([]);

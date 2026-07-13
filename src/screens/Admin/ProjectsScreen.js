@@ -4,6 +4,8 @@ import { createProject, getCategories, getDepartments, getProjects, getTasks, ge
 import { FolderKanban, Plus, Clock, Users, X, ChevronDown, CheckCircle, Search, LayoutGrid, List, ArrowLeft } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 
+import client from '../../api/client';
+
 export default function ProjectsScreen() {
   const { isDarkMode } = useThemeStore();
   const [projects, setProjects] = useState([]);

@@ -4,6 +4,8 @@ import { getAllExpenses } from '../../api/services';
 import { CreditCard } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 
+import client from '../../api/client';
+
 export default function ExpensesScreen() {
   const { isDarkMode } = useThemeStore();
   const [expenses, setExpenses] = useState([]);

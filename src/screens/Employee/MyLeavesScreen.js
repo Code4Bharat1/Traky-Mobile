@@ -5,6 +5,8 @@ import { applyLeave, cancelLeave, getMyLeaves } from '../../api/services';
 import { Umbrella, Plus, X, ChevronDown, CheckCircle, Clock, Calendar, Check, AlertCircle, Paperclip } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 
+import client from '../../api/client';
+
 const LEAVE_TYPES = [
   { _id: 'sick', name: 'Sick Leave' },
   { _id: 'casual', name: 'Casual Leave' },

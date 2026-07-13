@@ -4,6 +4,8 @@ import { getLeaderboard } from '../../api/services';
 import { Trophy, Medal, Award, User, RefreshCw, BarChart2, TrendingUp, CheckCircle, Clock, Users } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 
+import client from '../../api/client';
+
 export default function LeaderboardScreen() {
   const { isDarkMode } = useThemeStore();
   const [leaders, setLeaders] = useState([]);

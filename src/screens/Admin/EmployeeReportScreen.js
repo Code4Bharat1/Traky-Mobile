@@ -7,6 +7,8 @@ import * as Print from 'expo-print';
 import { createReport, getTasks } from '../../api/services';
 import useThemeStore from '../../store/themeStore';
 
+import client from '../../api/client';
+
 export default function EmployeeReportScreen() {
   const { isDarkMode } = useThemeStore();
   const [searchQuery, setSearchQuery] = useState('');

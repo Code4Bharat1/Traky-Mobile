@@ -6,6 +6,8 @@ import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
+import client from '../../api/client';
+
 export default function IssuesScreen() {
   const { isDarkMode } = useThemeStore();
   const { user } = useAuthStore();

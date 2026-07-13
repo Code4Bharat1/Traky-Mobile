@@ -4,6 +4,8 @@ import { createUser, deleteUser, getBranches, getDepartments, getUsers, updateUs
 import { Search, User, Edit2, Trash2, Plus, X, ChevronDown, CheckCircle, Shield } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 
+import client from '../../api/client';
+
 export default function UserManagement() {
   const { isDarkMode } = useThemeStore();
   const [users, setUsers] = useState([]);

@@ -7,6 +7,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useFocusEffect } from '@react-navigation/native';
 import useAuthStore from '../../store/authStore';
 
+import client from '../../api/client';
+
 export default function DailyLogsScreen() {
   const { isDarkMode } = useThemeStore();
   const { user } = useAuthStore();

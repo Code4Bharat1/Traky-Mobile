@@ -4,6 +4,8 @@ import { createCategory, deleteCategory, getCategories, updateCategory } from '.
 import { Tags, Plus, Edit2, Trash2, X, FolderKanban } from 'lucide-react-native';
 import useThemeStore from '../../store/themeStore';
 
+import client from '../../api/client';
+
 export default function CategoriesScreen() {
   const { isDarkMode } = useThemeStore();
   const [categories, setCategories] = useState([]);
